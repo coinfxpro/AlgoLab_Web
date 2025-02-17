@@ -26,6 +26,7 @@
                         <h5 class="card-title mb-0">Portföy Özeti</h5>
                     </div>
                     <div class="card-body">
+                        {% if portfolio %}
                         <div class="table-responsive">
                             <table class="table table-striped">
                                 <thead>
@@ -40,18 +41,23 @@
                                 <tbody>
                                     {% for position in portfolio %}
                                     <tr>
-                                        <td>{{ position.symbol }}</td>
-                                        <td>{{ position.quantity }}</td>
-                                        <td>{{ position.cost }}</td>
-                                        <td>{{ position.last_price }}</td>
-                                        <td class="{{ 'text-success' if position.pnl > 0 else 'text-danger' }}">
-                                            {{ position.pnl }}
+                                        <td>{{ position.get('symbol', '-') }}</td>
+                                        <td>{{ position.get('quantity', 0) }}</td>
+                                        <td>{{ position.get('cost', 0) }}</td>
+                                        <td>{{ position.get('last_price', 0) }}</td>
+                                        <td class="{{ 'text-success' if position.get('kar_zarar', 0) > 0 else 'text-danger' }}">
+                                            {{ position.get('kar_zarar', 0) }}
                                         </td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
                         </div>
+                        {% else %}
+                        <div class="alert alert-info">
+                            Portföy bilgisi bulunamadı.
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -68,7 +74,7 @@
                                 <select class="form-select" id="symbolSelect">
                                     <option value="">Sembol Seçin</option>
                                     {% for symbol in symbols %}
-                                    <option value="{{ symbol.symbol }}">{{ symbol.symbol }}</option>
+                                    <option value="{{ symbol.get('symbol', '') }}">{{ symbol.get('symbol', '') }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
