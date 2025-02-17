@@ -1,5 +1,8 @@
 numpy==1.26.4
 pandas==2.2.0
+flask==3.0.2
+flask-login==0.6.3
+flask-sqlalchemy==3.1.1
 pycryptodome==3.16.0
 requests==2.31.0
 setuptools==65.6.3
@@ -8,3 +11,4 @@ plotly==5.18.0
 python-dotenv==1.0.1
 websocket-client==1.7.0
 schedule
+gunicorn==21.2.0

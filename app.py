@@ -1,160 +1,179 @@
-import streamlit as st
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
+from algolab import API
 import pandas as pd
-import plotly.graph_objects as go
+import json
+from functools import wraps
+import plotly
+import plotly.graph_objs as go
 from datetime import datetime, timedelta
 import os
-import json
-from dotenv import load_dotenv
-from algolab_api import AlgoLabAPI
 
-# Load environment variables
-load_dotenv()
+app = Flask(__name__)
+app.secret_key = os.urandom(24)  # Session için gerekli
 
-# Page config
-st.set_page_config(
-    page_title="Algolab Trading Dashboard",
-    page_icon="📈",
-    layout="wide"
-)
+# Login gerektiren sayfalar için decorator
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'logged_in' not in session:
+            flash('Bu sayfayı görüntülemek için giriş yapmalısınız.', 'error')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
 
-# Initialize session state
-if 'api' not in st.session_state:
-    st.session_state.api = None
-if 'logged_in' not in st.session_state:
-    st.session_state.logged_in = False
+@app.route('/')
+def index():
+    if 'logged_in' in session:
+        return redirect(url_for('dashboard'))
+    return redirect(url_for('login'))
 
-def login(username, password):
-    try:
-        api = AlgoLabAPI()
-        api.connect(username, password)
-        st.session_state.api = api
-        st.session_state.logged_in = True
-        return True
-    except Exception as e:
-        st.error(f"Giriş hatası: {str(e)}")
-        return False
-
-def get_symbols():
-    try:
-        return st.session_state.api.get_symbols()
-    except Exception as e:
-        st.error(f"Sembol listesi alınırken hata oluştu: {str(e)}")
-        return []
-
-def get_historical_data(symbol, period="1d", interval="1m"):
-    try:
-        data = st.session_state.api.get_history(symbol, period, interval)
-        return pd.DataFrame(data)
-    except Exception as e:
-        st.error(f"Geçmiş veri alınırken hata oluştu: {str(e)}")
-        return pd.DataFrame()
-
-def login_form():
-    st.title("Algolab Trading Dashboard")
-    
-    with st.form("login_form"):
-        username = st.text_input("Kullanıcı Adı")
-        password = st.text_input("Şifre", type="password")
-        submitted = st.form_submit_button("Giriş Yap")
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        api_key = request.form.get('api_key')
+        username = request.form.get('username')
+        password = request.form.get('password')
         
-        if submitted:
-            if login(username, password):
-                st.success("Giriş başarılı!")
-                st.rerun()
+        try:
+            # API bağlantısı
+            api = API(api_key=api_key, username=username, password=password, auto_login=True)
+            
+            # Session'a API nesnesini kaydet
+            session['api_key'] = api_key
+            session['username'] = username
+            session['password'] = password
+            session['logged_in'] = True
+            
+            flash('Başarıyla giriş yaptınız!', 'success')
+            return redirect(url_for('dashboard'))
+            
+        except Exception as e:
+            flash(f'Giriş hatası: {str(e)}', 'error')
+            
+    return render_template('login.html')
 
-def main_dashboard():
-    st.title("Algolab Trading Dashboard")
-    
-    # Logout button
-    if st.sidebar.button("Çıkış Yap"):
-        st.session_state.api = None
-        st.session_state.logged_in = False
-        st.rerun()
-    
-    # Sidebar
-    st.sidebar.header("Filtreler")
-    
-    # Get symbols
-    symbols = get_symbols()
-    if not symbols:
-        st.warning("Sembol listesi alınamadı!")
-        return
-    
-    selected_symbol = st.sidebar.selectbox("Sembol", symbols)
-    
-    period_options = {
-        "1 Gün": "1d",
-        "5 Gün": "5d",
-        "1 Ay": "1mo",
-        "3 Ay": "3mo"
-    }
-    selected_period = st.sidebar.selectbox("Periyod", list(period_options.keys()))
-    
-    interval_options = {
-        "1 Dakika": "1m",
-        "5 Dakika": "5m",
-        "15 Dakika": "15m",
-        "1 Saat": "1h",
-        "1 Gün": "1d"
-    }
-    selected_interval = st.sidebar.selectbox("Interval", list(interval_options.keys()))
-    
-    # Get historical data
-    df = get_historical_data(
-        selected_symbol,
-        period_options[selected_period],
-        interval_options[selected_interval]
-    )
-    
-    if not df.empty:
-        # Metrics
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.metric("Son Fiyat", f"{df['close'].iloc[-1]:.2f}")
-        with col2:
-            change = ((df['close'].iloc[-1] - df['close'].iloc[0]) / df['close'].iloc[0]) * 100
-            st.metric("Değişim %", f"{change:.2f}%")
-        with col3:
-            st.metric("Hacim", f"{df['volume'].iloc[-1]:,.0f}")
-        with col4:
-            st.metric("İşlem Sayısı", len(df))
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash('Çıkış yaptınız.', 'info')
+    return redirect(url_for('login'))
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    try:
+        # API bağlantısı
+        api = API(api_key=session['api_key'], username=session['username'], 
+                 password=session['password'], auto_login=True)
         
-        # Candlestick chart
-        fig = go.Figure(data=[go.Candlestick(x=df.index,
-                                            open=df['open'],
-                                            high=df['high'],
-                                            low=df['low'],
-                                            close=df['close'])])
+        # Portföy bilgisi
+        portfolio = api.get_instant_position()
         
-        fig.update_layout(
-            title=f"{selected_symbol} Fiyat Grafiği",
-            yaxis_title="Fiyat",
-            xaxis_title="Tarih",
-            template="plotly_dark"
+        # Sembol listesi
+        symbols = api.get_equity_info()
+        
+        return render_template('dashboard.html', 
+                             portfolio=portfolio,
+                             symbols=symbols)
+    except Exception as e:
+        flash(f'Hata: {str(e)}', 'error')
+        return redirect(url_for('login'))
+
+@app.route('/market_data')
+@login_required
+def market_data():
+    try:
+        api = API(api_key=session['api_key'], username=session['username'], 
+                 password=session['password'], auto_login=True)
+        
+        # Tüm semboller
+        symbols = api.get_equity_info()
+        
+        return render_template('market_data.html', symbols=symbols)
+    except Exception as e:
+        flash(f'Hata: {str(e)}', 'error')
+        return redirect(url_for('login'))
+
+@app.route('/api/candle_data')
+@login_required
+def get_candle_data():
+    try:
+        symbol = request.args.get('symbol')
+        period = request.args.get('period', '1d')
+        interval = request.args.get('interval', '1m')
+        
+        api = API(api_key=session['api_key'], username=session['username'], 
+                 password=session['password'], auto_login=True)
+        
+        data = api.get_candle_data(symbol=symbol, period=period, interval=interval)
+        
+        # Mum grafiği için veriyi hazırla
+        candlestick = go.Candlestick(
+            x=[d['date'] for d in data],
+            open=[d['open'] for d in data],
+            high=[d['high'] for d in data],
+            low=[d['low'] for d in data],
+            close=[d['close'] for d in data]
         )
         
-        st.plotly_chart(fig, use_container_width=True)
-        
-        # Volume chart
-        volume_fig = go.Figure(data=[go.Bar(x=df.index, y=df['volume'])])
-        volume_fig.update_layout(
-            title="Hacim Grafiği",
-            yaxis_title="Hacim",
-            xaxis_title="Tarih",
-            template="plotly_dark"
+        layout = go.Layout(
+            title=f'{symbol} Fiyat Grafiği',
+            yaxis_title='Fiyat',
+            xaxis_title='Tarih'
         )
         
-        st.plotly_chart(volume_fig, use_container_width=True)
+        fig = go.Figure(data=[candlestick], layout=layout)
+        graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
         
-        # Raw data
-        with st.expander("Ham Veri"):
-            st.dataframe(df)
+        return jsonify({'success': True, 'chart': graphJSON, 'data': data})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
 
-def main():
-    if not st.session_state.logged_in:
-        login_form()
-    else:
-        main_dashboard()
+@app.route('/trading')
+@login_required
+def trading():
+    try:
+        api = API(api_key=session['api_key'], username=session['username'], 
+                 password=session['password'], auto_login=True)
+        
+        # Sembol listesi
+        symbols = api.get_equity_info()
+        
+        # Açık emirler
+        orders = api.get_equity_order_history()
+        
+        return render_template('trading.html', 
+                             symbols=symbols,
+                             orders=orders)
+    except Exception as e:
+        flash(f'Hata: {str(e)}', 'error')
+        return redirect(url_for('login'))
 
-if __name__ == "__main__":
-    main()
+@app.route('/api/send_order', methods=['POST'])
+@login_required
+def send_order():
+    try:
+        data = request.json
+        symbol = data.get('symbol')
+        direction = data.get('direction')  # 'Buy' veya 'Sell'
+        price_type = data.get('price_type')  # 'limit' veya 'piyasa'
+        price = data.get('price')
+        quantity = data.get('quantity')
+        
+        api = API(api_key=session['api_key'], username=session['username'], 
+                 password=session['password'], auto_login=True)
+        
+        result = api.send_order(
+            symbol=symbol,
+            direction=direction,
+            price_type=price_type,
+            price=price,
+            quantity=quantity
+        )
+        
+        return jsonify({'success': True, 'data': result})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+if __name__ == '__main__':
+    app.run(debug=True)
