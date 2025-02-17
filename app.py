@@ -36,21 +36,42 @@ def login():
         
         try:
             # API bağlantısı
-            api = API(api_key=api_key, username=username, password=password, auto_login=True)
+            api = API(api_key=api_key, username=username, password=password, auto_login=False)
             
             # Session'a API nesnesini kaydet
             session['api_key'] = api_key
             session['username'] = username
             session['password'] = password
-            session['logged_in'] = True
+            session['api_instance'] = api
             
-            flash('Başarıyla giriş yaptınız!', 'success')
-            return redirect(url_for('dashboard'))
+            # SMS doğrulama sayfasına yönlendir
+            return redirect(url_for('verify_sms'))
             
         except Exception as e:
             flash(f'Giriş hatası: {str(e)}', 'error')
             
     return render_template('login.html')
+
+@app.route('/verify_sms', methods=['GET', 'POST'])
+def verify_sms():
+    if 'api_key' not in session:
+        return redirect(url_for('login'))
+        
+    if request.method == 'POST':
+        sms_code = request.form.get('sms_code')
+        try:
+            api = session.get('api_instance')
+            api.sms_code = sms_code
+            api.start()  # SMS doğrulama ile giriş yap
+            
+            session['logged_in'] = True
+            flash('Başarıyla giriş yaptınız!', 'success')
+            return redirect(url_for('dashboard'))
+            
+        except Exception as e:
+            flash(f'SMS doğrulama hatası: {str(e)}', 'error')
+    
+    return render_template('verify_sms.html')
 
 @app.route('/logout')
 def logout():
