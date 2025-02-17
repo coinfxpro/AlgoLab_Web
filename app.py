@@ -43,6 +43,10 @@ def login():
             # API bağlantısı
             api_instance = API(api_key=api_key, username=username, password=password, auto_login=False)
             
+            # İlk login işlemi
+            if not api_instance.LoginUser():
+                raise Exception("Login başarısız")
+            
             # Session'a bilgileri kaydet
             session['api_key'] = api_key
             session['username'] = username
@@ -67,7 +71,8 @@ def verify_sms():
         sms_code = request.form.get('sms_code')
         try:
             api_instance.sms_code = sms_code
-            api_instance.start()  # SMS doğrulama ile giriş yap
+            if not api_instance.LoginUserControl():
+                raise Exception("SMS doğrulama başarısız")
             
             session['logged_in'] = True
             flash('Başarıyla giriş yaptınız!', 'success')
@@ -91,10 +96,10 @@ def logout():
 def dashboard():
     try:
         # Portföy bilgisi
-        portfolio = api_instance.get_instant_position()
+        portfolio = api_instance.InstantPosition()
         
         # Sembol listesi
-        symbols = api_instance.get_equity_info()
+        symbols = api_instance.GetEquityInfo()
         
         return render_template('dashboard.html', 
                              portfolio=portfolio,
@@ -108,7 +113,7 @@ def dashboard():
 def market_data():
     try:
         # Tüm semboller
-        symbols = api_instance.get_equity_info()
+        symbols = api_instance.GetEquityInfo()
         
         return render_template('market_data.html', symbols=symbols)
     except Exception as e:
@@ -123,7 +128,7 @@ def get_candle_data():
         period = request.args.get('period', '1d')
         interval = request.args.get('interval', '1m')
         
-        data = api_instance.get_candle_data(symbol=symbol, period=period, interval=interval)
+        data = api_instance.GetCandleData(symbol=symbol, period=period, interval=interval)
         
         # Mum grafiği için veriyi hazırla
         candlestick = go.Candlestick(
@@ -152,10 +157,10 @@ def get_candle_data():
 def trading():
     try:
         # Sembol listesi
-        symbols = api_instance.get_equity_info()
+        symbols = api_instance.GetEquityInfo()
         
         # Açık emirler
-        orders = api_instance.get_equity_order_history()
+        orders = api_instance.GetEquityOrderHistory()
         
         return render_template('trading.html', 
                              symbols=symbols,
@@ -175,7 +180,7 @@ def send_order():
         price = data.get('price')
         quantity = data.get('quantity')
         
-        result = api_instance.send_order(
+        result = api_instance.SendOrder(
             symbol=symbol,
             direction=direction,
             price_type=price_type,
