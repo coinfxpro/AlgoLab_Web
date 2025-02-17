@@ -1,9 +1,39 @@
-# ALGOLAB API KOD ORNEKLERİ
+# Algolab Trading Dashboard
 
-Algolab API örnek Python kodu, ilgili kodu indirdikten sonra config içerisinde yer alan (API-KEY,TC_NO,PASSWORD) bilgilerini doldurarak Algolab API işlemleri için kullanabilirsiniz. ornek.py dosyasını çalıştırarak tüm endpoint işlemlerini bir menü üzerinden test edebilir ornek_socket üzerinden anlık veri akışı,derinlik,işlem teyit bilgisi çekebilirsiniz. tick_to_ohlcv_converter dosyasından anlık işlem bilgisini JSON formatında OHLCV verilerine dönüştürebilirsiniz.
+Algolab.com.tr API'sini kullanarak geliştirilmiş bir Streamlit trading dashboard uygulaması.
 
+## Özellikler
 
-Öncelikle Algolab'e denizbank hesabınız ile kayıt olmanız ve Profilim --> Başvurular kısmından API ve İşlem sözleşmesi başvurusu yapıp size mail olarak iletilen gerekli adımları tamamladıktan sonra API-Keyinizin tanımlanması gerekmektedir.
-Algolab'e üye olmak için Denizbank Müşteri girişi yapmanız yeterlidir.
+- Kullanıcı girişi
+- Canlı borsa verilerini görüntüleme
+- Mum grafiği (Candlestick chart)
+- Hacim grafiği
+- Temel istatistikler
+- Ham veri görüntüleme
 
-https://www.algolab.com.tr/
+## Kurulum
+
+1. Gerekli paketleri yükleyin:
+```bash
+pip install -r requirements.txt
+```
+
+## Kullanım
+
+1. Uygulamayı başlatın:
+```bash
+streamlit run app.py
+```
+
+2. Web arayüzünde Algolab kullanıcı adı ve şifrenizi girin.
+
+## Ekran Görüntüleri
+
+- Mum grafiği ve hacim grafiği görüntüleme
+- Farklı zaman aralıkları seçebilme
+- Anlık fiyat ve değişim bilgileri
+- Detaylı veri tablosu
+
+## Lisans
+
+MIT
