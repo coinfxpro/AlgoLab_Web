@@ -34,8 +34,8 @@
                             <div class="mb-3">
                                 <label class="form-label">İşlem Yönü</label>
                                 <select class="form-select" id="direction" required>
-                                    <option value="Alış">Alış</option>
-                                    <option value="Satış">Satış</option>
+                                    <option value="Buy">Alış</option>
+                                    <option value="Sell">Satış</option>
                                 </select>
                             </div>
                             <div class="mb-3">
@@ -47,11 +47,11 @@
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Fiyat</label>
-                                <input type="number" class="form-control" id="price" step="0.01" required>
+                                <input type="text" class="form-control" id="price" placeholder="Örn: 45.50">
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Miktar</label>
-                                <input type="number" class="form-control" id="quantity" required>
+                                <input type="text" class="form-control" id="quantity" required placeholder="Örn: 10">
                             </div>
                             <button type="submit" class="btn btn-primary">Emir Gönder</button>
                         </form>
@@ -104,24 +104,37 @@
             e.preventDefault();
             
             // Form verilerini hazırla
+            const symbol = document.getElementById('symbol').value.toUpperCase();
+            const direction = document.getElementById('direction').value;  // "Buy" veya "Sell"
+            const priceType = document.getElementById('priceType').value; // "limit" veya "piyasa"
+            const quantity = document.getElementById('quantity').value;
             let price = document.getElementById('price').value;
-            let priceType = document.getElementById('priceType').value;
             
-            // Piyasa emri için fiyat 0 olacak
-            if (priceType === 'piyasa') {
-                price = '0';
+            // Validasyon
+            if (!symbol) {
+                alert('Lütfen sembol giriniz');
+                return;
             }
-
-            // Direction değerini düzelt (Alış -> Buy, Satış -> Sell)
-            let direction = document.getElementById('direction').value;
-            direction = direction === 'Alış' ? 'Buy' : 'Sell';
+            
+            if (!quantity) {
+                alert('Lütfen lot miktarı giriniz');
+                return;
+            }
+            
+            // Piyasa emri için fiyat boş string olacak
+            if (priceType === 'piyasa') {
+                price = '';
+            } else if (!price) {
+                alert('Limit emir için fiyat giriniz');
+                return;
+            }
             
             const data = {
-                symbol: document.getElementById('symbol').value.toUpperCase(),
+                symbol: symbol,
                 direction: direction,
-                priceType: priceType.toLowerCase(),
+                priceType: priceType,
                 price: price,
-                quantity: document.getElementById('quantity').value
+                quantity: quantity
             };
 
             console.log('Sending order data:', data);
@@ -137,7 +150,7 @@
             .then(result => {
                 console.log('Server response:', result);
                 if (result.success) {
-                    alert('Emir başarıyla gönderildi!');
+                    alert('Emir başarıyla gönderildi: ' + result.data);
                     location.reload();
                 } else {
                     alert('Hata: ' + result.error);
@@ -152,9 +165,24 @@
         // Piyasa emri seçildiğinde fiyat alanını devre dışı bırak
         document.getElementById('priceType').addEventListener('change', function(e) {
             const priceInput = document.getElementById('price');
-            priceInput.disabled = e.target.value === 'piyasa';
             if (e.target.value === 'piyasa') {
-                priceInput.value = '0';
+                priceInput.value = '';
+                priceInput.disabled = true;
+                priceInput.required = false;
+            } else {
+                priceInput.disabled = false;
+                priceInput.required = true;
+            }
+        });
+
+        // Sayfa yüklendiğinde de kontrol et
+        window.addEventListener('load', function() {
+            const priceType = document.getElementById('priceType');
+            const priceInput = document.getElementById('price');
+            if (priceType.value === 'piyasa') {
+                priceInput.value = '';
+                priceInput.disabled = true;
+                priceInput.required = false;
             }
         });
     </script>

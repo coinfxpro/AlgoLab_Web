@@ -368,46 +368,68 @@ def send_order():
         
         # Verileri al ve doğrula
         symbol = data.get('symbol', '').upper()
-        direction = data.get('direction', '')  # 'Buy' veya 'Sell'
-        price_type = data.get('priceType', '')  # 'limit' veya 'piyasa'
-        price = data.get('price', '')
+        direction = data.get('direction', '')  # "Buy" veya "Sell"
+        price_type = data.get('priceType', '')  # "limit" veya "piyasa"
+        price = data.get('price', '')  # Piyasa emirleri için boş string
         quantity = data.get('quantity', '')
-        
+
+        # Normalize numeric formats: replace comma with dot if any
+        if price:
+            price = price.replace(',', '.').strip()
+        if quantity:
+            quantity = str(quantity).strip()
+
         print(f"Parsed order data: symbol={symbol}, direction={direction}, price_type={price_type}, price={price}, quantity={quantity}")
-        
-        if not all([symbol, direction, price_type, quantity]):
+
+        # Validasyon
+        if not all([symbol, direction in ['Buy', 'Sell'], price_type in ['limit', 'piyasa'], quantity]):
             missing = []
             if not symbol: missing.append('symbol')
-            if not direction: missing.append('direction')
-            if not price_type: missing.append('priceType')
+            if direction not in ['Buy', 'Sell']: missing.append('direction')
+            if price_type not in ['limit', 'piyasa']: missing.append('priceType')
             if not quantity: missing.append('quantity')
             if price_type == 'limit' and not price: missing.append('price')
-            error_msg = f'Eksik alanlar: {", ".join(missing)}'
+
+            error_msg = f'Geçersiz veya eksik alanlar: {", ".join(missing)}'
             print(f"Validation error: {error_msg}")
             return jsonify({'success': False, 'error': error_msg})
-        
-        # Piyasa emri için fiyat 0 olacak
-        if price_type == 'piyasa':
-            price = '0'
-        
+
         # API'ye emir gönder
-        print(f"Sending order to API: symbol={symbol}, direction={direction}, price_type={price_type}, price={price}, quantity={quantity}")
-        result = api_instance.SendOrder(
-            symbol=symbol,
-            direction=direction,
-            pricetype=price_type,
-            price=price,
-            lot=quantity,
-            sms=True,
-            email=False,
-            sub_account=""
-        )
-        
-        print(f"API response: {result}")
-        return jsonify({'success': True, 'data': result})
+        try:
+            print(f"Sending order to API: symbol={symbol}, direction={direction}, price_type={price_type}, price={price}, quantity={quantity}")
+            
+            # Parametrelerin sırası örnek koddaki gibi olmalı
+            result = api_instance.SendOrder(
+                symbol=symbol, 
+                direction=direction, 
+                pricetype=price_type, 
+                price=price, 
+                lot=quantity, 
+                sms=False, 
+                email=False, 
+                subAccount=""
+            )
+            
+            print(f"API response: {result}")
+            
+            if isinstance(result, dict):
+                if result.get('success'):
+                    content = result.get('content', '')
+                    return jsonify({'success': True, 'data': content})
+                else:
+                    error_msg = result.get('message', 'API yanıtı başarısız')
+                    return jsonify({'success': False, 'error': error_msg})
+            else:
+                return jsonify({'success': False, 'error': 'API yanıtı geçersiz format'})
+                
+        except Exception as e:
+            error_msg = f"API çağrısı sırasında hata: {str(e)}"
+            print(error_msg)
+            return jsonify({'success': False, 'error': error_msg})
+            
     except Exception as e:
-        error_msg = str(e)
-        print(f"Send order error: {error_msg}")
+        error_msg = f"İstek işlenirken hata: {str(e)}"
+        print(error_msg)
         return jsonify({'success': False, 'error': error_msg})
 
 if __name__ == '__main__':
