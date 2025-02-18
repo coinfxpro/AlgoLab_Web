@@ -131,56 +131,173 @@ def logout():
 @login_required
 def dashboard():
     try:
+        # Debug için API çağrılarını logla
+        print("Getting portfolio data...")
+        
         # Portföy bilgisi
-        portfolio_data = api_instance.GetInstantPosition()
+        portfolio_data = api_instance.GetInstantPosition(sub_account="")
+        print(f"Portfolio data received (raw): {portfolio_data}")
+        
+        if portfolio_data is None:
+            print("Portfolio data is None")
+        elif isinstance(portfolio_data, str):
+            print(f"Portfolio data is string: {portfolio_data}")
+        elif isinstance(portfolio_data, dict):
+            print(f"Portfolio data is dict with keys: {portfolio_data.keys()}")
+        elif isinstance(portfolio_data, list):
+            print(f"Portfolio data is list with {len(portfolio_data)} items")
+            if portfolio_data:
+                print(f"First item keys: {portfolio_data[0].keys() if isinstance(portfolio_data[0], dict) else 'Not a dict'}")
+        else:
+            print(f"Portfolio data is of type: {type(portfolio_data)}")
         
         # Portföy verisini düzenle
         portfolio = []
-        if isinstance(portfolio_data, (list, dict)):
-            if isinstance(portfolio_data, dict):
+        if portfolio_data:  # None kontrolü
+            # String kontrolü
+            if isinstance(portfolio_data, str):
+                print(f"Portfolio data is string: {portfolio_data}")
+                portfolio_data = []
+            # Liste kontrolü
+            elif isinstance(portfolio_data, dict):
                 portfolio_data = [portfolio_data]
+            elif not isinstance(portfolio_data, list):
+                print(f"Unexpected portfolio data type: {type(portfolio_data)}")
+                portfolio_data = []
             
+            # Her pozisyon için veriyi düzenle
             for position in portfolio_data:
-                if isinstance(position, dict):
-                    # Pozisyon verilerini güvenli bir şekilde al
-                    symbol = position.get('symbol', '')
-                    quantity = position.get('quantity', 0)
-                    cost = position.get('cost', 0)
-                    last_price = position.get('last_price', 0)
-                    
-                    # Kar/zarar hesapla
-                    try:
-                        kar_zarar = (last_price - cost) * quantity
-                    except:
-                        kar_zarar = 0
-                    
-                    portfolio.append({
-                        'symbol': symbol,
-                        'quantity': quantity,
-                        'cost': cost,
-                        'last_price': last_price,
-                        'kar_zarar': kar_zarar
-                    })
+                try:
+                    if isinstance(position, dict):
+                        print(f"Processing position: {position}")
+                        # Pozisyon verilerini güvenli bir şekilde al
+                        symbol = position.get('Symbol', '')
+                        quantity = float(position.get('Quantity', 0))
+                        cost = float(position.get('AveragePrice', 0))
+                        last_price = float(position.get('LastPrice', 0))
+                        
+                        # Hesaplamalar
+                        total_cost = cost * quantity
+                        total_value = last_price * quantity
+                        kar_zarar = total_value - total_cost
+                        kar_zarar_yuzde = (kar_zarar / total_cost * 100) if total_cost > 0 else 0
+                        
+                        portfolio.append({
+                            'symbol': symbol,
+                            'quantity': quantity,
+                            'cost': cost,
+                            'last_price': last_price,
+                            'total_cost': total_cost,
+                            'total_value': total_value,
+                            'kar_zarar': kar_zarar,
+                            'kar_zarar_yuzde': kar_zarar_yuzde
+                        })
+                except Exception as e:
+                    print(f"Error processing position: {str(e)}")
+                    continue
         
-        # Sembol listesi
-        symbols = get_all_symbols()
+        # Emir geçmişi
+        print("Getting order history...")
+        orders = {
+            'bekleyen': [],
+            'gerceklesen': [],
+            'iptal': []
+        }
         
-        # Her sembol için detaylı bilgi al
+        try:
+            order_history = api_instance.GetEquityOrderHistory(id="", subAccount="")
+            print(f"Order history received: {order_history}")
+            
+            if order_history:
+                if isinstance(order_history, str):
+                    print(f"Order history is string: {order_history}")
+                    order_history = []
+                elif isinstance(order_history, dict):
+                    order_history = [order_history]
+                
+                if isinstance(order_history, list):
+                    for order in order_history:
+                        if isinstance(order, dict):
+                            status = str(order.get('status', '')).lower()
+                            if status == 'bekleyen':
+                                orders['bekleyen'].append(order)
+                            elif status == 'gerçekleşen':
+                                orders['gerceklesen'].append(order)
+                            elif status == 'iptal':
+                                orders['iptal'].append(order)
+        except Exception as e:
+            print(f"Emir geçmişi alınamadı: {str(e)}")
+        
+        # Son işlemler
+        print("Getting today's transactions...")
+        transactions = []
+        try:
+            trans_data = api_instance.GetTodaysTransaction(sub_account="")
+            print(f"Transaction data received: {trans_data}")
+            
+            if trans_data:
+                if isinstance(trans_data, str):
+                    print(f"Transaction data is string: {trans_data}")
+                    trans_data = []
+                elif isinstance(trans_data, dict):
+                    trans_data = [trans_data]
+                
+                if isinstance(trans_data, list):
+                    transactions = trans_data
+        except Exception as e:
+            print(f"Son işlemler alınamadı: {str(e)}")
+        
+        # Sembol listesi (sadece portföydeki semboller için fiyat bilgisi al)
+        portfolio_symbols = {pos['symbol'] for pos in portfolio if pos.get('symbol')}
         symbol_details = []
-        for symbol in symbols:
+        
+        print("Getting symbol details...")
+        for symbol in portfolio_symbols:
             try:
                 details = api_instance.GetEquityInfo(symbol)
+                print(f"Symbol details for {symbol}: {details}")
+                
                 if details:
+                    if isinstance(details, str):
+                        print(f"Symbol details is string for {symbol}: {details}")
+                        continue
                     symbol_details.append(details[0] if isinstance(details, list) else details)
             except Exception as e:
                 print(f"Sembol bilgisi alınamadı ({symbol}): {str(e)}")
         
         return render_template('dashboard.html', 
                              portfolio=portfolio,
-                             symbols=symbol_details)
+                             symbols=symbol_details,
+                             orders=orders,
+                             transactions=transactions)
     except Exception as e:
+        print(f"Dashboard error: {str(e)}")
         flash(f'Hata: {str(e)}', 'error')
         return redirect(url_for('login'))
+
+@app.route('/islem')
+@login_required
+def trading():
+    try:
+        # Bekleyen emirleri al
+        orders = api_instance.GetEquityOrderHistory(id="", subAccount="")
+        if isinstance(orders, str):
+            orders = []
+        elif isinstance(orders, dict):
+            orders = [orders]
+            
+        # Sembol listesini al
+        symbols = api_instance.GetEquityInfo("")
+        if isinstance(symbols, str):
+            symbols = []
+        elif isinstance(symbols, dict):
+            symbols = [symbols]
+            
+        return render_template('trading.html', orders=orders, symbols=symbols)
+    except Exception as e:
+        print(f"Trading page error: {str(e)}")
+        flash(f'Hata: {str(e)}', 'error')
+        return redirect(url_for('dashboard'))
 
 @app.route('/market_data')
 @login_required
@@ -242,61 +359,56 @@ def get_candle_data():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
-@app.route('/trading')
-@login_required
-def trading():
-    try:
-        # Sembol listesi
-        symbols = get_all_symbols()
-        
-        # Her sembol için detaylı bilgi al
-        symbol_details = []
-        for symbol in symbols:
-            try:
-                details = api_instance.GetEquityInfo(symbol)
-                if details:
-                    symbol_details.append(details[0] if isinstance(details, list) else details)
-            except Exception as e:
-                print(f"Sembol bilgisi alınamadı ({symbol}): {str(e)}")
-        
-        # Açık emirler
-        orders = api_instance.GetEquityOrderHistory("")
-        
-        return render_template('trading.html', 
-                             symbols=symbol_details,
-                             orders=orders)
-    except Exception as e:
-        flash(f'Hata: {str(e)}', 'error')
-        return redirect(url_for('login'))
-
 @app.route('/api/send_order', methods=['POST'])
 @login_required
 def send_order():
     try:
-        data = request.json
-        symbol = data.get('symbol')
-        direction = data.get('direction')  # 'Buy' veya 'Sell'
-        price_type = data.get('price_type')  # 'limit' veya 'piyasa'
-        price = data.get('price')
-        quantity = data.get('quantity')
+        data = request.get_json()
+        print(f"Received order data: {data}")
+        
+        # Verileri al ve doğrula
+        symbol = data.get('symbol', '').upper()
+        direction = data.get('direction', '')  # 'Buy' veya 'Sell'
+        price_type = data.get('priceType', '')  # 'limit' veya 'piyasa'
+        price = data.get('price', '')
+        quantity = data.get('quantity', '')
+        
+        print(f"Parsed order data: symbol={symbol}, direction={direction}, price_type={price_type}, price={price}, quantity={quantity}")
         
         if not all([symbol, direction, price_type, quantity]):
-            return jsonify({'success': False, 'error': 'Eksik parametre'})
+            missing = []
+            if not symbol: missing.append('symbol')
+            if not direction: missing.append('direction')
+            if not price_type: missing.append('priceType')
+            if not quantity: missing.append('quantity')
+            if price_type == 'limit' and not price: missing.append('price')
+            error_msg = f'Eksik alanlar: {", ".join(missing)}'
+            print(f"Validation error: {error_msg}")
+            return jsonify({'success': False, 'error': error_msg})
         
+        # Piyasa emri için fiyat 0 olacak
+        if price_type == 'piyasa':
+            price = '0'
+        
+        # API'ye emir gönder
+        print(f"Sending order to API: symbol={symbol}, direction={direction}, price_type={price_type}, price={price}, quantity={quantity}")
         result = api_instance.SendOrder(
             symbol=symbol,
             direction=direction,
             pricetype=price_type,
-            price=price if price_type == 'limit' else None,
+            price=price,
             lot=quantity,
             sms=True,
             email=False,
-            subAccount=""
+            sub_account=""
         )
         
+        print(f"API response: {result}")
         return jsonify({'success': True, 'data': result})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        error_msg = str(e)
+        print(f"Send order error: {error_msg}")
+        return jsonify({'success': False, 'error': error_msg})
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)

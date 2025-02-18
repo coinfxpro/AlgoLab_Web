@@ -29,25 +29,20 @@
                         <form id="orderForm">
                             <div class="mb-3">
                                 <label class="form-label">Sembol</label>
-                                <select class="form-select" id="symbol" required>
-                                    <option value="">Sembol Seçin</option>
-                                    {% for symbol in symbols %}
-                                    <option value="{{ symbol.symbol }}">{{ symbol.symbol }}</option>
-                                    {% endfor %}
-                                </select>
+                                <input type="text" class="form-control" id="symbol" required placeholder="Örn: THYAO">
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">İşlem Yönü</label>
                                 <select class="form-select" id="direction" required>
-                                    <option value="Buy">Alış</option>
-                                    <option value="Sell">Satış</option>
+                                    <option value="Alış">Alış</option>
+                                    <option value="Satış">Satış</option>
                                 </select>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Emir Tipi</label>
                                 <select class="form-select" id="priceType" required>
-                                    <option value="limit">Limit</option>
                                     <option value="piyasa">Piyasa</option>
+                                    <option value="limit">Limit</option>
                                 </select>
                             </div>
                             <div class="mb-3">
@@ -108,15 +103,30 @@
         document.getElementById('orderForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
+            // Form verilerini hazırla
+            let price = document.getElementById('price').value;
+            let priceType = document.getElementById('priceType').value;
+            
+            // Piyasa emri için fiyat 0 olacak
+            if (priceType === 'piyasa') {
+                price = '0';
+            }
+
+            // Direction değerini düzelt (Alış -> Buy, Satış -> Sell)
+            let direction = document.getElementById('direction').value;
+            direction = direction === 'Alış' ? 'Buy' : 'Sell';
+            
             const data = {
-                symbol: document.getElementById('symbol').value,
-                direction: document.getElementById('direction').value,
-                price_type: document.getElementById('priceType').value,
-                price: parseFloat(document.getElementById('price').value),
-                quantity: parseInt(document.getElementById('quantity').value)
+                symbol: document.getElementById('symbol').value.toUpperCase(),
+                direction: direction,
+                priceType: priceType.toLowerCase(),
+                price: price,
+                quantity: document.getElementById('quantity').value
             };
 
-            fetch('/api/send_order', {
+            console.log('Sending order data:', data);
+
+            fetch('/send_order', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -125,6 +135,7 @@
             })
             .then(response => response.json())
             .then(result => {
+                console.log('Server response:', result);
                 if (result.success) {
                     alert('Emir başarıyla gönderildi!');
                     location.reload();
@@ -133,6 +144,7 @@
                 }
             })
             .catch(error => {
+                console.error('Error:', error);
                 alert('Bir hata oluştu: ' + error);
             });
         });
@@ -142,7 +154,7 @@
             const priceInput = document.getElementById('price');
             priceInput.disabled = e.target.value === 'piyasa';
             if (e.target.value === 'piyasa') {
-                priceInput.value = '';
+                priceInput.value = '0';
             }
         });
     </script>
