@@ -135,7 +135,7 @@ def dashboard():
         print("Getting portfolio data...")
         
         # Portföy bilgisi
-        portfolio_data = api_instance.GetInstantPosition(sub_account="")
+        portfolio_data = api_instance.GetInstantPosition(Subaccount="")
         print(f"Portfolio data received (raw): {portfolio_data}")
         
         if portfolio_data is None:
@@ -407,7 +407,7 @@ def send_order():
                 lot=quantity, 
                 sms=False, 
                 email=False, 
-                subAccount=""
+                Subaccount=""
             )
             
             print(f"API response: {result}")
