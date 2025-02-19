@@ -189,18 +189,18 @@ class API():
             
 
     def GetInstantPosition(self, sub_account=""):
-        """
-        Yatırım Hesabınıza bağlı alt hesapları (101, 102 v.b.) ve limitlerini görüntüleyebilirsiniz.
-        """
         try:
             f = inspect.stack()[0][3]
             end_point = URL_INSTANTPOSITION
             payload = {'Subaccount': sub_account}
             resp = self.post(end_point, payload)
-            return self.error_check(resp, f)
+            result = self.error_check(resp, f)
+            if result and isinstance(result, dict) and 'content' in result:
+                return result['content']
+            return result
         except Exception as e:
             print(f"{f}() fonsiyonunda hata oluştu: {e}")
-            
+            return None
 
     def GetTodaysTransaction(self, sub_account=""):
         """
