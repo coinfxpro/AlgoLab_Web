@@ -34,8 +34,8 @@
                             <div class="mb-3">
                                 <label class="form-label">İşlem Yönü</label>
                                 <select class="form-select" id="direction" required>
-                                    <option value="Buy">Alış</option>
-                                    <option value="Sell">Satış</option>
+                                    <option value="BUY">Alış</option>
+                                    <option value="SELL">Satış</option>
                                 </select>
                             </div>
                             <div class="mb-3">
@@ -70,23 +70,33 @@
                             <table class="table table-striped">
                                 <thead>
                                     <tr>
+                                        <th>Referans</th>
                                         <th>Sembol</th>
                                         <th>Yön</th>
                                         <th>Tip</th>
                                         <th>Fiyat</th>
                                         <th>Miktar</th>
+                                        <th>Kalan</th>
                                         <th>Durum</th>
+                                        <th>İşlem</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for order in orders %}
                                     <tr>
-                                        <td>{{ order.symbol }}</td>
-                                        <td>{{ order.direction }}</td>
-                                        <td>{{ order.price_type }}</td>
-                                        <td>{{ order.price }}</td>
-                                        <td>{{ order.quantity }}</td>
-                                        <td>{{ order.status }}</td>
+                                        <td>{{ order.get('atpref', '-') }}</td>
+                                        <td>{{ order.get('ticker', '-') }}</td>
+                                        <td>{{ order.get('buysell', '-') }}</td>
+                                        <td>{{ order.get('pricetype', '-') }}</td>
+                                        <td>{{ order.get('waitingprice', '-') }}</td>
+                                        <td>{{ order.get('ordersize', '-') }}</td>
+                                        <td>{{ order.get('remainingsize', '-') }}</td>
+                                        <td>{{ order.get('description', '-') }}</td>
+                                        <td>
+                                            <button class="btn btn-danger btn-sm" onclick="cancelOrder('{{ order.get('atpref', '') }}')">
+                                                İptal Et
+                                            </button>
+                                        </td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -105,7 +115,7 @@
             
             // Form verilerini hazırla
             const symbol = document.getElementById('symbol').value.toUpperCase();
-            const direction = document.getElementById('direction').value;  // "Buy" veya "Sell"
+            const direction = document.getElementById('direction').value;  // "BUY" veya "SELL"
             const priceType = document.getElementById('priceType').value; // "limit" veya "piyasa"
             const quantity = document.getElementById('quantity').value;
             let price = document.getElementById('price').value;
@@ -150,7 +160,10 @@
             .then(result => {
                 console.log('Server response:', result);
                 if (result.success) {
-                    alert('Emir başarıyla gönderildi: ' + result.data);
+                    alert('Emir başarıyla gönderildi\nReferans: ' + result.reference);
+                    // Form'u temizle
+                    document.getElementById('orderForm').reset();
+                    // Sayfayı yenile
                     location.reload();
                 } else {
                     alert('Hata: ' + result.error);
@@ -185,6 +198,39 @@
                 priceInput.required = false;
             }
         });
+
+        // Emir iptal etme fonksiyonu
+        function cancelOrder(orderId) {
+            if (!orderId) {
+                alert('Emir ID bulunamadı');
+                return;
+            }
+            
+            if (!confirm('Bu emri iptal etmek istediğinize emin misiniz?')) {
+                return;
+            }
+            
+            fetch('/cancel_order', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ id: orderId })
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert(result.message);
+                    location.reload();  // Sayfayı yenile
+                } else {
+                    alert('Hata: ' + result.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Bir hata oluştu: ' + error);
+            });
+        }
     </script>
 </body>
 </html>

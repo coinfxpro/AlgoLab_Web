@@ -259,29 +259,136 @@ def dashboard():
         flash(f'Hata: {str(e)}', 'error')
         return redirect(url_for('login'))
 
-@app.route('/islem')
+@app.route('/trading')
 @login_required
 def trading():
     try:
-        # Bekleyen emirleri al
+        # Emir geçmişini al
         orders = api_instance.GetEquityOrderHistory(id="", subAccount="")
-        if isinstance(orders, str):
+        print(f"Orders response: {orders}")
+        
+        if orders and isinstance(orders, list):
+            # Sadece bekleyen emirleri filtrele
+            orders = [order for order in orders if order.get('equityStatusDescription', '').upper() == 'WAITING']
+        else:
             orders = []
-        elif isinstance(orders, dict):
-            orders = [orders]
             
-        # Sembol listesini al
-        symbols = api_instance.GetEquityInfo("")
-        if isinstance(symbols, str):
-            symbols = []
-        elif isinstance(symbols, dict):
-            symbols = [symbols]
-            
-        return render_template('trading.html', orders=orders, symbols=symbols)
+        print(f"Filtered orders: {orders}")
+        return render_template('trading.html', orders=orders)
     except Exception as e:
         print(f"Trading page error: {str(e)}")
         flash(f'Hata: {str(e)}', 'error')
         return redirect(url_for('dashboard'))
+
+@app.route('/send_order', methods=['POST'])
+@login_required
+def send_order():
+    try:
+        data = request.get_json()
+        print(f"Received order data: {data}")
+        
+        # Verileri al ve doğrula
+        symbol = data.get('symbol', '').upper()
+        direction = data.get('direction', '').upper()  # API 'BUY' veya 'SELL' bekliyor
+        price_type = data.get('priceType', '').lower()  # API 'limit' veya 'piyasa' bekliyor
+        price = str(data.get('price', ''))  # API string bekliyor
+        lot = str(data.get('quantity', ''))  # API string bekliyor
+        
+        print(f"Parsed order data: symbol={symbol}, direction={direction}, price_type={price_type}, price={price}, lot={lot}")
+        
+        # Gerekli alanları kontrol et
+        if not all([symbol, direction, price_type, lot]):
+            raise ValueError("Tüm alanlar doldurulmalıdır")
+            
+        if direction not in ['BUY', 'SELL']:
+            raise ValueError("Geçersiz işlem yönü")
+            
+        if price_type not in ['limit', 'piyasa']:
+            raise ValueError("Geçersiz emir tipi")
+            
+        # Piyasa emri için fiyat 0 olacak
+        if price_type == 'piyasa':
+            price = '0'
+        elif not price:
+            raise ValueError("Limit emir için fiyat girilmelidir")
+            
+        # API'ye gönderilecek payload'ı hazırla
+        payload = {
+            "symbol": symbol,
+            "direction": direction,
+            "pricetype": price_type,
+            "price": price,
+            "lot": lot,
+            "sms": False,
+            "email": False,
+            "subAccount": ""  # Büyük S yerine küçük s
+        }
+        
+        print(f"Sending order with payload: {payload}")
+        
+        # Emir gönder
+        response = api_instance.SendOrder(**payload)
+        print(f"Order response: {response}")
+        
+        if not response or not isinstance(response, dict):
+            raise ValueError("Emir gönderilemedi")
+            
+        if not response.get('success', False):
+            raise ValueError(response.get('message', 'Emir gönderilemedi'))
+            
+        # Başarılı cevabı döndür
+        return jsonify({
+            'success': True,
+            'message': response.get('message', ''),
+            'reference': response.get('content', '')
+        })
+        
+    except Exception as e:
+        print(f"Error sending order: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 400
+
+@app.route('/cancel_order', methods=['POST'])
+@login_required
+def cancel_order():
+    try:
+        data = request.get_json()
+        order_id = data.get('id')
+        
+        if not order_id:
+            raise ValueError("Emir ID'si gerekli")
+            
+        # API'ye gönderilecek payload
+        payload = {
+            "id": order_id,
+            "subAccount": ""
+        }
+        
+        print(f"Canceling order with payload: {payload}")
+        
+        # Emri iptal et
+        response = api_instance.DeleteOrder(**payload)
+        print(f"Cancel order response: {response}")
+        
+        if not response or not isinstance(response, dict):
+            raise ValueError("Emir iptal edilemedi")
+            
+        if not response.get('success', False):
+            raise ValueError(response.get('message', 'Emir iptal edilemedi'))
+            
+        return jsonify({
+            'success': True,
+            'message': response.get('message', 'Emir başarıyla iptal edildi')
+        })
+        
+    except Exception as e:
+        print(f"Error canceling order: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 400
 
 @app.route('/market_data')
 @login_required
@@ -343,56 +450,5 @@ def get_candle_data():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
-@app.route('/api/send_order', methods=['POST'])
-@login_required
-def send_order():
-    try:
-        data = request.get_json()
-        print(f"Received order data: {data}")
-        
-        # Verileri al ve doğrula
-        symbol = data.get('symbol', '').upper()
-        direction = data.get('direction', '')  # 'Buy' veya 'Sell'
-        price_type = data.get('priceType', '')  # 'limit' veya 'piyasa'
-        price = data.get('price', '')
-        quantity = data.get('quantity', '')
-        
-        print(f"Parsed order data: symbol={symbol}, direction={direction}, price_type={price_type}, price={price}, quantity={quantity}")
-        
-        if not all([symbol, direction, price_type, quantity]):
-            missing = []
-            if not symbol: missing.append('symbol')
-            if not direction: missing.append('direction')
-            if not price_type: missing.append('priceType')
-            if not quantity: missing.append('quantity')
-            if price_type == 'limit' and not price: missing.append('price')
-            error_msg = f'Eksik alanlar: {", ".join(missing)}'
-            print(f"Validation error: {error_msg}")
-            return jsonify({'success': False, 'error': error_msg})
-        
-        # Piyasa emri için fiyat 0 olacak
-        if price_type == 'piyasa':
-            price = '0'
-        
-        # API'ye emir gönder
-        print(f"Sending order to API: symbol={symbol}, direction={direction}, price_type={price_type}, price={price}, quantity={quantity}")
-        result = api_instance.SendOrder(
-            symbol=symbol,
-            direction=direction,
-            pricetype=price_type,
-            price=price,
-            lot=quantity,
-            sms=True,
-            email=False,
-            sub_account=""
-        )
-        
-        print(f"API response: {result}")
-        return jsonify({'success': True, 'data': result})
-    except Exception as e:
-        error_msg = str(e)
-        print(f"Send order error: {error_msg}")
-        return jsonify({'success': False, 'error': error_msg})
-
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    app.run(debug=True)

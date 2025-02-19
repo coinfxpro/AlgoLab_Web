@@ -105,32 +105,42 @@
                             <table class="table table-striped">
                                 <thead>
                                     <tr>
-                                        <th>Emir No</th>
+                                        <th>Referans</th>
                                         <th>Sembol</th>
-                                        <th>İşlem</th>
+                                        <th>Yön</th>
+                                        <th>Tip</th>
                                         <th>Fiyat</th>
-                                        <th>Lot</th>
+                                        <th>Miktar</th>
+                                        <th>Kalan</th>
                                         <th>Durum</th>
-                                        <th>Tarih</th>
+                                        <th>İşlem</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for order in orders.bekleyen %}
                                     <tr>
-                                        <td>{{ order.get('id', '-') }}</td>
-                                        <td>{{ order.get('symbol', '-') }}</td>
-                                        <td>{{ order.get('direction', '-') }}</td>
-                                        <td>{{ order.get('price', 0) }}</td>
-                                        <td>{{ order.get('quantity', 0) }}</td>
-                                        <td>{{ order.get('status', '-') }}</td>
-                                        <td>{{ order.get('date', '-') }}</td>
+                                        <td>{{ order.get('atpref', '-') }}</td>
+                                        <td>{{ order.get('ticker', '-') }}</td>
+                                        <td>{{ order.get('buysell', '-') }}</td>
+                                        <td>{{ order.get('pricetype', '-') }}</td>
+                                        <td>{{ order.get('waitingprice', '-') }}</td>
+                                        <td>{{ order.get('ordersize', '-') }}</td>
+                                        <td>{{ order.get('remainingsize', '-') }}</td>
+                                        <td>{{ order.get('description', '-') }}</td>
+                                        <td>
+                                            <button class="btn btn-danger btn-sm" onclick="cancelOrder('{{ order.get('atpref', '') }}')">
+                                                İptal Et
+                                            </button>
+                                        </td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
                         </div>
                         {% else %}
-                        <div class="alert alert-info">Bekleyen emir bulunmuyor.</div>
+                        <div class="alert alert-info">
+                            Bekleyen emir bulunmamaktadır.
+                        </div>
                         {% endif %}
                     </div>
 
@@ -141,32 +151,36 @@
                             <table class="table table-striped">
                                 <thead>
                                     <tr>
-                                        <th>Emir No</th>
+                                        <th>Referans</th>
                                         <th>Sembol</th>
-                                        <th>İşlem</th>
+                                        <th>Yön</th>
+                                        <th>Tip</th>
                                         <th>Fiyat</th>
-                                        <th>Lot</th>
+                                        <th>Miktar</th>
+                                        <th>Kalan</th>
                                         <th>Durum</th>
-                                        <th>Tarih</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for order in orders.gerceklesen %}
                                     <tr>
-                                        <td>{{ order.get('id', '-') }}</td>
-                                        <td>{{ order.get('symbol', '-') }}</td>
-                                        <td>{{ order.get('direction', '-') }}</td>
-                                        <td>{{ order.get('price', 0) }}</td>
-                                        <td>{{ order.get('quantity', 0) }}</td>
-                                        <td>{{ order.get('status', '-') }}</td>
-                                        <td>{{ order.get('date', '-') }}</td>
+                                        <td>{{ order.get('atpref', '-') }}</td>
+                                        <td>{{ order.get('ticker', '-') }}</td>
+                                        <td>{{ order.get('buysell', '-') }}</td>
+                                        <td>{{ order.get('pricetype', '-') }}</td>
+                                        <td>{{ order.get('waitingprice', '-') }}</td>
+                                        <td>{{ order.get('ordersize', '-') }}</td>
+                                        <td>{{ order.get('remainingsize', '-') }}</td>
+                                        <td>{{ order.get('description', '-') }}</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
                         </div>
                         {% else %}
-                        <div class="alert alert-info">Gerçekleşen emir bulunmuyor.</div>
+                        <div class="alert alert-info">
+                            Gerçekleşen emir bulunmamaktadır.
+                        </div>
                         {% endif %}
                     </div>
 
@@ -177,32 +191,36 @@
                             <table class="table table-striped">
                                 <thead>
                                     <tr>
-                                        <th>Emir No</th>
+                                        <th>Referans</th>
                                         <th>Sembol</th>
-                                        <th>İşlem</th>
+                                        <th>Yön</th>
+                                        <th>Tip</th>
                                         <th>Fiyat</th>
-                                        <th>Lot</th>
+                                        <th>Miktar</th>
+                                        <th>Kalan</th>
                                         <th>Durum</th>
-                                        <th>Tarih</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for order in orders.iptal %}
                                     <tr>
-                                        <td>{{ order.get('id', '-') }}</td>
-                                        <td>{{ order.get('symbol', '-') }}</td>
-                                        <td>{{ order.get('direction', '-') }}</td>
-                                        <td>{{ order.get('price', 0) }}</td>
-                                        <td>{{ order.get('quantity', 0) }}</td>
-                                        <td>{{ order.get('status', '-') }}</td>
-                                        <td>{{ order.get('date', '-') }}</td>
+                                        <td>{{ order.get('atpref', '-') }}</td>
+                                        <td>{{ order.get('ticker', '-') }}</td>
+                                        <td>{{ order.get('buysell', '-') }}</td>
+                                        <td>{{ order.get('pricetype', '-') }}</td>
+                                        <td>{{ order.get('waitingprice', '-') }}</td>
+                                        <td>{{ order.get('ordersize', '-') }}</td>
+                                        <td>{{ order.get('remainingsize', '-') }}</td>
+                                        <td>{{ order.get('description', '-') }}</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
                         </div>
                         {% else %}
-                        <div class="alert alert-info">İptal edilen emir bulunmuyor.</div>
+                        <div class="alert alert-info">
+                            İptal edilen emir bulunmamaktadır.
+                        </div>
                         {% endif %}
                     </div>
 
