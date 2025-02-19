@@ -54,11 +54,11 @@
                             {% for position in portfolio %}
                             <tr>
                                 <td>{{ position.get('symbol', '-') }}</td>
-                                <td>{{ position.get('quantity', 0) }}</td>
-                                <td>{{ "%.2f"|format(position.get('cost', 0)) }}</td>
-                                <td>{{ "%.2f"|format(position.get('last_price', 0)) }}</td>
-                                <td>{{ "%.2f"|format(position.get('total_cost', 0)) }}</td>
-                                <td>{{ "%.2f"|format(position.get('total_value', 0)) }}</td>
+                                <td>{{ position.get('lot', 0) }}</td>
+                                <td>{{ "%.2f"|format(position.get('alis_maliyeti', 0)) }}</td>
+                                <td>{{ "%.2f"|format(position.get('guncel_fiyat', 0)) }}</td>
+                                <td>{{ "%.2f"|format(position.get('toplam_maliyet', 0)) }}</td>
+                                <td>{{ "%.2f"|format(position.get('toplam_deger', 0)) }}</td>
                                 <td class="{{ 'text-success' if position.get('kar_zarar', 0) > 0 else 'text-danger' }}">
                                     {{ "%.2f"|format(position.get('kar_zarar', 0)) }}
                                 </td>
@@ -208,37 +208,37 @@
 
                     <!-- Son İşlemler -->
                     <div class="tab-pane fade" id="islemler" role="tabpanel">
-                        {% if transactions %}
+                        {% if orders.son_islemler %}
                         <div class="table-responsive">
                             <table class="table table-striped">
                                 <thead>
                                     <tr>
-                                        <th>İşlem No</th>
+                                        <th>Emir No</th>
                                         <th>Sembol</th>
                                         <th>İşlem</th>
                                         <th>Fiyat</th>
                                         <th>Lot</th>
-                                        <th>Tutar</th>
+                                        <th>Durum</th>
                                         <th>Tarih</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for transaction in transactions %}
+                                    {% for order in orders.son_islemler %}
                                     <tr>
-                                        <td>{{ transaction.get('id', '-') }}</td>
-                                        <td>{{ transaction.get('symbol', '-') }}</td>
-                                        <td>{{ transaction.get('direction', '-') }}</td>
-                                        <td>{{ transaction.get('price', 0) }}</td>
-                                        <td>{{ transaction.get('quantity', 0) }}</td>
-                                        <td>{{ transaction.get('amount', 0) }}</td>
-                                        <td>{{ transaction.get('date', '-') }}</td>
+                                        <td>{{ order.get('id', '-') }}</td>
+                                        <td>{{ order.get('symbol', '-') }}</td>
+                                        <td>{{ order.get('direction', '-') }}</td>
+                                        <td>{{ order.get('price', 0) }}</td>
+                                        <td>{{ order.get('quantity', 0) }}</td>
+                                        <td>{{ order.get('status', '-') }}</td>
+                                        <td>{{ order.get('date', '-') }}</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
                         </div>
                         {% else %}
-                        <div class="alert alert-info">İşlem geçmişi bulunamadı.</div>
+                        <div class="alert alert-info">Son işlem bulunmuyor.</div>
                         {% endif %}
                     </div>
                 </div>

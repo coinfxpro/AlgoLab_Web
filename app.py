@@ -148,14 +148,20 @@ def dashboard():
                         print(f"Processing position: {position}")
                         # Pozisyon verilerini güvenli bir şekilde al
                         code = position.get('code', '')
-                        total_stock = float(position.get('totalstock', 0))
-                        cost = float(position.get('cost', 0))
-                        unit_price = float(position.get('unitprice', 0))
-                        total_amount = float(position.get('tlamaount', 0))
-                        profit = float(position.get('profit', 0))
+                        
+                        # Sayısal değerleri güvenli bir şekilde dönüştür
+                        try:
+                            total_stock = float(position.get('totalstock', '0').replace(',', ''))
+                            cost = float(position.get('cost', '0').replace(',', ''))
+                            unit_price = float(position.get('unitprice', '0').replace(',', ''))
+                            total_amount = float(position.get('tlamaount', '0').replace(',', ''))
+                            profit = float(position.get('profit', '0').replace(',', ''))
+                        except (ValueError, TypeError):
+                            print(f"Error converting numeric values for position: {code}")
+                            continue
                         
                         # Kar/zarar yüzdesi hesapla
-                        total_cost = cost * total_stock
+                        total_cost = cost * total_stock if total_stock > 0 else 0
                         kar_zarar_yuzde = (profit / total_cost * 100) if total_cost > 0 else 0
                         
                         portfolio.append({
@@ -166,34 +172,69 @@ def dashboard():
                             'toplam_maliyet': total_cost,
                             'toplam_deger': total_amount,
                             'kar_zarar': profit,
-                            'kar_zarar_yuzde': kar_zarar_yuzde
+                            'kar_zarar_yuzde': round(kar_zarar_yuzde, 2)
                         })
                 except Exception as e:
                     print(f"Error processing position: {str(e)}")
                     continue
         
-        # Emir geçmişi
-        print("Getting order history...")
+        # Emir geçmişi ve son işlemler
+        print("Getting order history and recent transactions...")
         orders = {
             'bekleyen': [],
             'gerceklesen': [],
-            'iptal': []
+            'iptal': [],
+            'son_islemler': []
         }
         
         try:
+            # Emir geçmişi al
             order_history = api_instance.GetEquityOrderHistory(id="", subAccount="")
             print(f"Order history received: {order_history}")
             
             if order_history and isinstance(order_history, list):
                 for order in order_history:
                     if isinstance(order, dict):
+                        # Tarih bilgisini düzenle
+                        try:
+                            order['date'] = datetime.strptime(order.get('date', ''), '%Y-%m-%d %H:%M:%S').strftime('%d.%m.%Y %H:%M:%S')
+                        except:
+                            order['date'] = order.get('date', '')
+                            
                         status = str(order.get('status', '')).lower()
                         if status == 'bekleyen':
                             orders['bekleyen'].append(order)
-                        elif status == 'gerçekleşen':
+                        elif status in ['gerçekleşen', 'gerceklesen']:
                             orders['gerceklesen'].append(order)
                         elif status == 'iptal':
                             orders['iptal'].append(order)
+            
+            # Günlük işlemleri al
+            today_transactions = api_instance.TodaysTransaction(subAccount="")
+            print(f"Today's transactions received: {today_transactions}")
+            
+            if today_transactions and isinstance(today_transactions, list):
+                for transaction in today_transactions:
+                    if isinstance(transaction, dict):
+                        # API'den gelen veriyi template'in beklediği formata dönüştür
+                        formatted_transaction = {
+                            'id': transaction.get('atpref', '-'),
+                            'symbol': transaction.get('ticker', '-'),
+                            'direction': transaction.get('buysell', '-'),
+                            'price': transaction.get('price', '0'),
+                            'quantity': transaction.get('ordersize', '0'),
+                            'status': transaction.get('description', '-'),
+                            'date': transaction.get('timetransaction', '-')
+                        }
+                        orders['son_islemler'].append(formatted_transaction)
+            
+            # Son işlemleri tarihe göre sırala (en yeniden en eskiye)
+            orders['son_islemler'] = sorted(
+                orders['son_islemler'],
+                key=lambda x: datetime.strptime(x.get('date', '1900-01-01 00:00:00'), '%d.%m.%Y %H:%M:%S' if '.' in x.get('date', '') else '%Y-%m-%d %H:%M:%S'),
+                reverse=True
+            )
+            
         except Exception as e:
             print(f"Emir geçmişi alınamadı: {str(e)}")
         
