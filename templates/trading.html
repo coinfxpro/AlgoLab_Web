@@ -1,236 +1,213 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Algolab Trading - İşlem</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body>
-    {% include 'navbar.html' %}
-    
-    <div class="container-fluid mt-4">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+{% extends "base.html" %}
 
-        <div class="row">
-            <!-- Emir Giriş Formu -->
-            <div class="col-md-6 mb-4">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Yeni Emir</h5>
-                    </div>
-                    <div class="card-body">
-                        <form id="orderForm">
-                            <div class="mb-3">
-                                <label class="form-label">Sembol</label>
-                                <input type="text" class="form-control" id="symbol" required placeholder="Örn: THYAO">
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">İşlem Yönü</label>
-                                <select class="form-select" id="direction" required>
-                                    <option value="BUY">Alış</option>
-                                    <option value="SELL">Satış</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Emir Tipi</label>
-                                <select class="form-select" id="priceType" required>
-                                    <option value="piyasa">Piyasa</option>
-                                    <option value="limit">Limit</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Fiyat</label>
-                                <input type="text" class="form-control" id="price" placeholder="Örn: 45.50">
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Miktar</label>
-                                <input type="text" class="form-control" id="quantity" required placeholder="Örn: 10">
-                            </div>
-                            <button type="submit" class="btn btn-primary">Emir Gönder</button>
-                        </form>
-                    </div>
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <!-- Emir Formu -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Yeni Emir</h5>
+                </div>
+                <div class="card-body">
+                    <form id="orderForm" onsubmit="submitOrder(event)">
+                        <div class="mb-3">
+                            <label for="symbol" class="form-label">Sembol</label>
+                            <input type="text" class="form-control" id="symbol" name="symbol" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="direction" class="form-label">İşlem</label>
+                            <select class="form-select" id="direction" name="direction" required>
+                                <option value="BUY">ALIŞ</option>
+                                <option value="SELL">SATIŞ</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="priceType" class="form-label">Emir Tipi</label>
+                            <select class="form-select" id="priceType" name="priceType" required>
+                                <option value="piyasa">Piyasa</option>
+                                <option value="limit">Limit</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="price" class="form-label">Fiyat</label>
+                            <input type="number" step="0.01" class="form-control" id="price" name="price">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="quantity" class="form-label">Lot</label>
+                            <input type="number" step="1" class="form-control" id="quantity" name="quantity" required>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100">Emir Gönder</button>
+                    </form>
                 </div>
             </div>
+        </div>
 
-            <!-- Açık Emirler -->
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Açık Emirler</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>Referans</th>
-                                        <th>Sembol</th>
-                                        <th>Yön</th>
-                                        <th>Tip</th>
-                                        <th>Fiyat</th>
-                                        <th>Miktar</th>
-                                        <th>Kalan</th>
-                                        <th>Durum</th>
-                                        <th>İşlem</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for order in orders %}
-                                    <tr>
-                                        <td>{{ order.get('atpref', '-') }}</td>
-                                        <td>{{ order.get('ticker', '-') }}</td>
-                                        <td>{{ order.get('buysell', '-') }}</td>
-                                        <td>{{ order.get('pricetype', '-') }}</td>
-                                        <td>{{ order.get('waitingprice', '-') }}</td>
-                                        <td>{{ order.get('ordersize', '-') }}</td>
-                                        <td>{{ order.get('remainingsize', '-') }}</td>
-                                        <td>{{ order.get('description', '-') }}</td>
-                                        <td>
-                                            <button class="btn btn-danger btn-sm" onclick="cancelOrder('{{ order.get('atpref', '') }}')">
-                                                İptal Et
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
+        <!-- Açık Emirler -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Açık Emirler</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Referans</th>
+                                    <th>Sembol</th>
+                                    <th>Yön</th>
+                                    <th>Tip</th>
+                                    <th>Fiyat</th>
+                                    <th>Miktar</th>
+                                    <th>Kalan</th>
+                                    <th>Durum</th>
+                                    <th>İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in orders %}
+                                <tr>
+                                    <td>{{ order.get('atpref', '-') }}</td>
+                                    <td>{{ order.get('ticker', '-') }}</td>
+                                    <td>{{ order.get('buysell', '-') }}</td>
+                                    <td>{{ order.get('pricetype', '-') }}</td>
+                                    <td>{{ order.get('waitingprice', '-') }}</td>
+                                    <td>{{ order.get('ordersize', '-') }}</td>
+                                    <td>{{ order.get('remainingsize', '-') }}</td>
+                                    <td>{{ order.get('description', '-') }}</td>
+                                    <td>
+                                        <button class="btn btn-danger btn-sm" onclick="cancelOrder('{{ order.get('atpref', '') }}')">
+                                            İptal Et
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        document.getElementById('orderForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            // Form verilerini hazırla
-            const symbol = document.getElementById('symbol').value.toUpperCase();
-            const direction = document.getElementById('direction').value;  // "BUY" veya "SELL"
-            const priceType = document.getElementById('priceType').value; // "limit" veya "piyasa"
-            const quantity = document.getElementById('quantity').value;
-            let price = document.getElementById('price').value;
-            
-            // Validasyon
-            if (!symbol) {
-                alert('Lütfen sembol giriniz');
-                return;
-            }
-            
-            if (!quantity) {
-                alert('Lütfen lot miktarı giriniz');
-                return;
-            }
-            
-            // Piyasa emri için fiyat boş string olacak
-            if (priceType === 'piyasa') {
-                price = '';
-            } else if (!price) {
-                alert('Limit emir için fiyat giriniz');
-                return;
-            }
-            
-            const data = {
-                symbol: symbol,
-                direction: direction,
-                priceType: priceType,
-                price: price,
-                quantity: quantity
-            };
+<script>
+// Piyasa emri seçildiğinde fiyat alanını devre dışı bırak
+document.getElementById('priceType').addEventListener('change', function(e) {
+    const priceInput = document.getElementById('price');
+    if (e.target.value === 'piyasa') {
+        priceInput.value = '';
+        priceInput.disabled = true;
+        priceInput.required = false;
+    } else {
+        priceInput.disabled = false;
+        priceInput.required = true;
+    }
+});
 
-            console.log('Sending order data:', data);
+// Sayfa yüklendiğinde de kontrol et
+window.addEventListener('load', function() {
+    const priceType = document.getElementById('priceType');
+    const priceInput = document.getElementById('price');
+    if (priceType.value === 'piyasa') {
+        priceInput.value = '';
+        priceInput.disabled = true;
+        priceInput.required = false;
+    }
+});
 
-            fetch('/send_order', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            })
-            .then(response => response.json())
-            .then(result => {
-                console.log('Server response:', result);
-                if (result.success) {
-                    alert('Emir başarıyla gönderildi\nReferans: ' + result.reference);
-                    // Form'u temizle
-                    document.getElementById('orderForm').reset();
-                    // Sayfayı yenile
-                    location.reload();
-                } else {
-                    alert('Hata: ' + result.error);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Bir hata oluştu: ' + error);
-            });
-        });
-
-        // Piyasa emri seçildiğinde fiyat alanını devre dışı bırak
-        document.getElementById('priceType').addEventListener('change', function(e) {
-            const priceInput = document.getElementById('price');
-            if (e.target.value === 'piyasa') {
-                priceInput.value = '';
-                priceInput.disabled = true;
-                priceInput.required = false;
-            } else {
-                priceInput.disabled = false;
-                priceInput.required = true;
-            }
-        });
-
-        // Sayfa yüklendiğinde de kontrol et
-        window.addEventListener('load', function() {
-            const priceType = document.getElementById('priceType');
-            const priceInput = document.getElementById('price');
-            if (priceType.value === 'piyasa') {
-                priceInput.value = '';
-                priceInput.disabled = true;
-                priceInput.required = false;
-            }
-        });
-
-        // Emir iptal etme fonksiyonu
-        function cancelOrder(orderId) {
-            if (!orderId) {
-                alert('Emir ID bulunamadı');
-                return;
-            }
-            
-            if (!confirm('Bu emri iptal etmek istediğinize emin misiniz?')) {
-                return;
-            }
-            
-            fetch('/cancel_order', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ id: orderId })
-            })
-            .then(response => response.json())
-            .then(result => {
-                if (result.success) {
-                    alert(result.message);
-                    location.reload();  // Sayfayı yenile
-                } else {
-                    alert('Hata: ' + result.error);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Bir hata oluştu: ' + error);
-            });
+function submitOrder(event) {
+    event.preventDefault();
+    
+    const formData = {
+        symbol: document.getElementById('symbol').value.toUpperCase(),
+        direction: document.getElementById('direction').value,
+        priceType: document.getElementById('priceType').value,
+        price: document.getElementById('price').value,
+        quantity: document.getElementById('quantity').value
+    };
+    
+    // Validasyon
+    if (!formData.symbol) {
+        alert('Lütfen sembol giriniz');
+        return;
+    }
+    
+    if (!formData.quantity) {
+        alert('Lütfen lot miktarı giriniz');
+        return;
+    }
+    
+    // Piyasa emri için fiyat boş string olacak
+    if (formData.priceType === 'piyasa') {
+        formData.price = '';
+    } else if (!formData.price) {
+        alert('Limit emir için fiyat giriniz');
+        return;
+    }
+    
+    fetch('/send_order', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Emir başarıyla gönderildi!');
+            document.getElementById('orderForm').reset();
+            location.reload();
+        } else {
+            alert('Emir gönderilirken bir hata oluştu: ' + data.error);
         }
-    </script>
-</body>
-</html>
+    })
+    .catch(error => {
+        alert('Bir hata oluştu: ' + error);
+    });
+}
+
+function cancelOrder(orderId) {
+    if (!orderId) {
+        alert('Emir ID bulunamadı');
+        return;
+    }
+    
+    if (!confirm('Bu emri iptal etmek istediğinize emin misiniz?')) {
+        return;
+    }
+    
+    fetch('/cancel_order', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ id: orderId })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            alert(result.message);
+            location.reload();
+        } else {
+            alert('Hata: ' + result.error);
+        }
+    })
+    .catch(error => {
+        alert('Bir hata oluştu: ' + error);
+    });
+}
+
+// Her 30 saniyede bir sayfayı yenile
+setInterval(function() {
+    location.reload();
+}, 30000);
+</script>
+{% endblock %}
