@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Webhook Emirleri</h2>
+    
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0">Son Webhook Emirleri</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Tarih</th>
+                            <th>Sembol</th>
+                            <th>İşlem</th>
+                            <th>Miktar</th>
+                            <th>Fiyat</th>
+                            <th>Durum</th>
+                            <th>Emir ID</th>
+                            <th>Kaynak</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in webhook_orders %}
+                        <tr>
+                            <td>{{ order.date }}</td>
+                            <td>{{ order.symbol }}</td>
+                            <td>
+                                {% if order.side == 'AL' %}
+                                <span class="badge bg-success">ALIŞ</span>
+                                {% else %}
+                                <span class="badge bg-danger">SATIŞ</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ order.quantity }}</td>
+                            <td>{{ order.price }}</td>
+                            <td>
+                                {% if order.status == 'waiting' %}
+                                <span class="badge bg-warning">Bekliyor</span>
+                                {% elif order.status == 'filled' %}
+                                <span class="badge bg-success">Gerçekleşti</span>
+                                {% elif order.status == 'cancelled' %}
+                                <span class="badge bg-danger">İptal</span>
+                                {% else %}
+                                <span class="badge bg-secondary">{{ order.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ order.order_id }}</td>
+                            <td>{{ order.source }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Her 30 saniyede bir tabloyu güncelle
+setInterval(function() {
+    fetch('/webhook/orders/data')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            }
+        });
+}, 30000);
+</script>
+{% endblock %}

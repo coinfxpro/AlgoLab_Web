@@ -17,6 +17,9 @@ app.secret_key = os.urandom(24)  # Session için gerekli
 # API nesnesi için global değişken
 api_instance = None
 
+# Webhook emirlerini saklamak için global liste
+webhook_orders = []
+
 # Tüm sembolleri almak için yardımcı fonksiyon
 def get_all_symbols():
     try:
@@ -452,6 +455,30 @@ def get_candle_data():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
+@app.route('/webhook/orders')
+@login_required
+def webhook_orders_page():
+    return render_template('webhook_orders.html', webhook_orders=webhook_orders)
+
+@app.route('/webhook/orders/data')
+@login_required
+def webhook_orders_data():
+    # Emir durumlarını güncelle
+    for order in webhook_orders:
+        if order['status'] == 'waiting':
+            try:
+                # Emir durumunu kontrol et
+                order_history = api_instance.GetEquityOrderHistory(id=order['order_id'], subAccount="")
+                if order_history and isinstance(order_history, list):
+                    for hist_order in order_history:
+                        if hist_order.get('id') == order['order_id']:
+                            order['status'] = hist_order.get('status', 'waiting')
+                            break
+            except Exception as e:
+                print(f"Error updating order status: {str(e)}")
+    
+    return jsonify({'success': True, 'orders': webhook_orders})
+
 # Webhook güvenliği için secret key
 WEBHOOK_SECRET = os.environ.get('WEBHOOK_SECRET', 'your-secret-key')  # Güvenli bir secret key kullanın
 
@@ -499,10 +526,23 @@ def tradingview_webhook():
         if not response.get('success', False):
             raise Exception(response.get('message', 'Order failed'))
             
+        # Başarılı emri listeye ekle
+        order_id = response.get('content', {}).get('id')
+        webhook_orders.append({
+            'date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'symbol': data['symbol'],
+            'side': side,
+            'quantity': data['quantity'],
+            'price': data['price'],
+            'status': 'waiting',
+            'order_id': order_id,
+            'source': 'TradingView'
+        })
+            
         return jsonify({
             'success': True,
             'message': 'Order placed successfully',
-            'order_id': response.get('content', {}).get('id')
+            'order_id': order_id
         })
         
     except Exception as e:

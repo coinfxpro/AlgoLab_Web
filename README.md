@@ -53,6 +53,80 @@ git push heroku main
 gunicorn app:app
 ```
 
+## Webhook Kullanımı
+
+### TradingView Webhook Entegrasyonu
+
+Uygulama, TradingView'den gelen sinyalleri otomatik olarak emirlere dönüştürebilen bir webhook endpoint'i içerir.
+
+#### Webhook Endpoint Bilgileri
+
+- **URL**: `http://your-server/webhook/tradingview`
+- **Method**: `POST`
+- **Headers**:
+  - `Content-Type: application/json`
+  - `X-Tradingview-Webhook-Signature: <HMAC-SHA256 signature>`
+
+#### Request Body Formatı
+
+```json
+{
+    "symbol": "GARAN",
+    "side": "AL",        // "AL" veya "SAT"
+    "quantity": "100",   // Lot miktarı
+    "price": "20.50",    // Emir fiyatı
+    "orderType": "Limit", // Opsiyonel, varsayılan: "Limit"
+    "validity": "GUN"     // Opsiyonel, varsayılan: "GUN"
+}
+```
+
+#### Webhook Güvenliği
+
+1. Webhook güvenliği için HMAC-SHA256 imzalama kullanılmaktadır
+2. `WEBHOOK_SECRET` environment variable'ı ile secret key belirleyebilirsiniz:
+   ```bash
+   export WEBHOOK_SECRET=your-secret-key
+   ```
+3. TradingView'de alert oluştururken webhook URL'sine ek olarak bu secret key ile imzalanmış bir header eklemeniz gerekir
+
+#### TradingView'de Alert Oluşturma
+
+1. TradingView'de bir indikatör veya strateji oluşturun
+2. Alerts sekmesine gidin
+3. "Create Alert" butonuna tıklayın
+4. "Webhook URL" alanına webhook endpoint'inizi girin
+5. "Message" alanına yukarıdaki JSON formatında bir mesaj girin
+6. Alert'i kaydedin
+
+#### Webhook Emirlerini İzleme
+
+Webhook üzerinden gönderilen emirleri ve durumlarını `/webhook/orders` sayfasından takip edebilirsiniz. Bu sayfada:
+
+- Emir tarih ve saati
+- İşlem yapılan sembol
+- İşlem yönü (AL/SAT)
+- Miktar ve fiyat bilgileri
+- Emir durumu
+- Emir ID
+- Sinyal kaynağı
+
+bilgilerini görebilirsiniz. Sayfa her 30 saniyede bir otomatik olarak güncellenir.
+
+#### Test Etme
+
+Webhook'u test etmek için cURL kullanabilirsiniz:
+
+```bash
+# HMAC-SHA256 imzası oluştur
+SIGNATURE=$(echo -n '{"symbol":"GARAN","side":"AL","quantity":"100","price":"20.50"}' | openssl dgst -sha256 -hmac "your-secret-key" -hex | cut -d' ' -f2)
+
+# Webhook'u test et
+curl -X POST http://localhost:5000/webhook/tradingview \
+  -H "Content-Type: application/json" \
+  -H "X-Tradingview-Webhook-Signature: $SIGNATURE" \
+  -d '{"symbol":"GARAN","side":"AL","quantity":"100","price":"20.50"}'
+```
+
 ## Lisans
 
 MIT
