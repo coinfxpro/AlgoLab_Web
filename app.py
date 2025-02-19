@@ -8,6 +8,8 @@ import plotly
 import plotly.graph_objs as go
 from datetime import datetime, timedelta
 import os
+import hmac
+import hashlib
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # Session için gerekli
@@ -449,6 +451,82 @@ def get_candle_data():
         return jsonify({'success': True, 'chart': graphJSON, 'data': data})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
+
+# Webhook güvenliği için secret key
+WEBHOOK_SECRET = os.environ.get('WEBHOOK_SECRET', 'your-secret-key')  # Güvenli bir secret key kullanın
+
+@app.route('/webhook/tradingview', methods=['POST'])
+def tradingview_webhook():
+    try:
+        # Gelen veriyi al
+        data = request.get_json()
+        
+        # Webhook imzasını kontrol et
+        signature = request.headers.get('X-Tradingview-Webhook-Signature')
+        if not verify_webhook_signature(request.get_data(), signature):
+            return jsonify({'error': 'Invalid signature'}), 401
+            
+        print(f"Received webhook data: {data}")
+        
+        # Gerekli alanları kontrol et
+        required_fields = ['symbol', 'side', 'quantity', 'price']
+        if not all(field in data for field in required_fields):
+            return jsonify({'error': 'Missing required fields'}), 400
+            
+        # Emir tipini belirle (AL/SAT)
+        side = data['side'].upper()
+        if side not in ['AL', 'SAT']:
+            return jsonify({'error': 'Invalid side. Must be AL or SAT'}), 400
+            
+        # Emir payload'ını hazırla
+        payload = {
+            'symbol': data['symbol'],
+            'price': str(data['price']),
+            'lot': str(data['quantity']),
+            'side': side,
+            'subAccount': '',  # Alt hesap belirtilmemişse boş bırak
+            'orderType': data.get('orderType', 'Limit'),  # Varsayılan olarak Limit emir
+            'validity': data.get('validity', 'GUN'),  # Varsayılan olarak günlük emir
+        }
+        
+        # Emri gönder
+        response = api_instance.SendOrder(**payload)
+        print(f"Order response: {response}")
+        
+        if not response or not isinstance(response, dict):
+            raise Exception("Invalid response from API")
+            
+        if not response.get('success', False):
+            raise Exception(response.get('message', 'Order failed'))
+            
+        return jsonify({
+            'success': True,
+            'message': 'Order placed successfully',
+            'order_id': response.get('content', {}).get('id')
+        })
+        
+    except Exception as e:
+        print(f"Webhook error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+def verify_webhook_signature(payload, signature):
+    """Webhook imzasını doğrula"""
+    try:
+        if not signature:
+            return False
+            
+        # HMAC-SHA256 ile imzayı hesapla
+        expected_signature = hmac.new(
+            WEBHOOK_SECRET.encode(),
+            payload,
+            hashlib.sha256
+        ).hexdigest()
+        
+        # Hesaplanan imza ile gelen imzayı karşılaştır
+        return hmac.compare_digest(expected_signature, signature)
+    except Exception as e:
+        print(f"Signature verification error: {str(e)}")
+        return False
 
 if __name__ == '__main__':
     app.run(debug=True)
