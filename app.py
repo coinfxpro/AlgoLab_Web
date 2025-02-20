@@ -143,61 +143,6 @@ def dashboard():
         portfolio_data = api_instance.GetInstantPosition(sub_account="")
         print(f"Portfolio data received (raw): {portfolio_data}")
         
-        # Portföy verisini düzenle
-        portfolio = []
-        total_cost = 0
-        total_value = 0
-        total_profit_loss = 0
-        
-        if portfolio_data and isinstance(portfolio_data, list):
-            # Her pozisyon için veriyi düzenle
-            for position in portfolio_data:
-                try:
-                    if isinstance(position, dict):
-                        print(f"Processing position: {position}")
-                        # Pozisyon verilerini güvenli bir şekilde al
-                        code = position.get('code', '')
-                        
-                        # Sayısal değerleri güvenli bir şekilde dönüştür
-                        try:
-                            total_stock = float(position.get('totalstock', '0').replace(',', ''))
-                            cost = float(position.get('cost', '0').replace(',', ''))
-                            unit_price = float(position.get('unitprice', '0').replace(',', ''))
-                            total_amount = float(position.get('tlamaount', '0').replace(',', ''))
-                            profit = float(position.get('profit', '0').replace(',', ''))
-                        except (ValueError, TypeError):
-                            print(f"Error converting numeric values for position: {code}")
-                            continue
-                        
-                        # Toplam maliyet ve değer hesapla
-                        position_cost = cost * total_stock if total_stock > 0 else 0
-                        total_cost += position_cost
-                        
-                        # TRY bakiyesi için özel durum - mutlak değer al
-                        if code == 'TRY':
-                            total_value += abs(total_amount)  # TRY için toplam değerin mutlak değerini al
-                            total_profit_loss += abs(profit)
-                        else:
-                            total_value += total_amount
-                            total_profit_loss += profit
-                        
-                        # Kar/zarar yüzdesi hesapla
-                        kar_zarar_yuzde = (profit / position_cost * 100) if position_cost > 0 else 0
-                        
-                        portfolio.append({
-                            'symbol': code,
-                            'lot': total_stock,
-                            'alis_maliyeti': cost,
-                            'guncel_fiyat': unit_price,
-                            'toplam_maliyet': position_cost,
-                            'toplam_deger': abs(total_amount) if code == 'TRY' else total_amount,  # TRY için mutlak değer
-                            'kar_zarar': profit,
-                            'kar_zarar_yuzde': round(kar_zarar_yuzde, 2)
-                        })
-                except Exception as e:
-                    print(f"Error processing position: {str(e)}")
-                    continue
-        
         # Portföy özeti
         print("Getting portfolio summary...")
         portfolio_summary = None
@@ -224,6 +169,68 @@ def dashboard():
                 }
         except Exception as e:
             print(f"Error getting portfolio summary: {str(e)}")
+        
+        # Portföy verisini düzenle
+        portfolio = []
+        total_cost = 0
+        total_value = 0
+        total_profit_loss = 0
+        
+        if portfolio_data and isinstance(portfolio_data, list):
+            # Her pozisyon için veriyi düzenle
+            for position in portfolio_data:
+                try:
+                    if isinstance(position, dict):
+                        print(f"Processing position: {position}")
+                        # Pozisyon verilerini güvenli bir şekilde al
+                        code = position.get('code', '')
+                        
+                        # Sayısal değerleri güvenli bir şekilde dönüştür
+                        try:
+                            total_stock = float(position.get('totalstock', '0').replace(',', ''))
+                            cost = float(position.get('cost', '0').replace(',', ''))
+                            unit_price = float(position.get('unitprice', '0').replace(',', ''))
+                            total_amount = float(position.get('tlamaount', '0').replace(',', ''))
+                            profit = float(position.get('profit', '0').replace(',', ''))
+                        except (ValueError, TypeError):
+                            print(f"Error converting numeric values for position: {code}")
+                            continue
+                        
+                        # TRY bakiyesi için özel durum
+                        if code == 'TRY':
+                            # TRY bakiyesini RiskSimulation'dan al
+                            if portfolio_summary:
+                                total_amount = portfolio_summary['t0_nakit']
+                                profit = 0  # TRY için kar/zarar gösterme
+                        
+                        # Toplam maliyet ve değer hesapla
+                        position_cost = cost * total_stock if total_stock > 0 else 0
+                        total_cost += position_cost
+                        
+                        # Toplam değerleri güncelle
+                        if code == 'TRY':
+                            total_value += abs(total_amount)
+                            total_profit_loss += 0  # TRY için kar/zarar hesaplama
+                        else:
+                            total_value += total_amount
+                            total_profit_loss += profit
+                        
+                        # Kar/zarar yüzdesi hesapla
+                        kar_zarar_yuzde = (profit / position_cost * 100) if position_cost > 0 else 0
+                        
+                        portfolio.append({
+                            'symbol': code,
+                            'lot': total_stock,
+                            'alis_maliyeti': cost,
+                            'guncel_fiyat': unit_price,
+                            'toplam_maliyet': position_cost,
+                            'toplam_deger': abs(total_amount) if code == 'TRY' else total_amount,
+                            'kar_zarar': profit,
+                            'kar_zarar_yuzde': round(kar_zarar_yuzde, 2)
+                        })
+                except Exception as e:
+                    print(f"Error processing position: {str(e)}")
+                    continue
         
         return render_template('dashboard.html', 
                              portfolio=portfolio,
