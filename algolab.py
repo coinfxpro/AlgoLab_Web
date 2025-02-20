@@ -172,7 +172,7 @@ class API():
             f = inspect.stack()[0][3]
             endpoint = URL_GETEQUITYINFO
             payload = {'symbol': symbol}
-            resp = self.post(endpoint, payload=payload)
+            resp = self.post(endpoint=endpoint, payload=payload)
             return self.error_check(resp, f)
         except Exception as e:
             print(f"{f}() fonsiyonunda hata oluştu: {e}")
@@ -202,19 +202,45 @@ class API():
             print(f"{f}() fonsiyonunda hata oluştu: {e}")
             return None
 
+    def GetTodaysTransactions(self, sub_account=""):
+        """
+        Kullanıcıya ait günlük işlem kayıtlarını getirir.
+        """
+        try:
+            f = inspect.stack()[0][3]
+            end_point = URL_TODAYSTRANSACTION
+            payload = {'Subaccount': sub_account}
+            resp = self.post(end_point, payload)
+            return self.error_check(resp, f)
+        except Exception as e:
+            print(f"{f}() fonksiyonunda hata oluştu: {e}")
+
     def GetTodaysTransaction(self, sub_account=""):
         """
         Günlük işlemlerinizi çekebilirsiniz.(Bekleyen gerçekleşen silinen v.b.)
         """
         try:
             f = inspect.stack()[0][3]
-            end_point = URL_TODAYTRANSACTION
+            end_point = URL_TODAYSTRANSACTION
             payload = {'Subaccount': sub_account}
             resp = self.post(end_point, payload)
             return self.error_check(resp, f)
         except Exception as e:
             print(f"{f}() fonsiyonunda hata oluştu: {e}")
             
+
+    def GetEquityOrderHistory(self, sub_account=""):
+        """
+        Bekleyen emirleri getirir.
+        """
+        try:
+            f = inspect.stack()[0][3]
+            end_point = URL_GETEQUITYORDERHISTORY
+            payload = {'Subaccount': sub_account}
+            resp = self.post(end_point, payload)
+            return self.error_check(resp, f)
+        except Exception as e:
+            print(f"{f}() fonksiyonunda hata oluştu: {e}")
 
     def GetViopCustomerOverall(self, sub_account=""):
         try:
@@ -251,6 +277,9 @@ class API():
             
             
     def RiskSimulation(self, sub_account=""):
+        """
+        Kullanıcıya ait hisse özet bilgilerini getirir.
+        """
         try:
             f = inspect.stack()[0][3]
             end_point = URL_RISKSIMULATION
@@ -336,7 +365,7 @@ class API():
             "lot": "1",
             "sms": True,
             "email": False,
-            "Subaccount": ""
+            "subAccount": ""
         }
         """
         try:
@@ -486,6 +515,7 @@ class API():
         }
         """
         try:
+            f = inspect.stack()[0][3]
             end_point = URL_GETEQUITYORDERHISTORY
             payload = {
                 'id': id,
@@ -618,3 +648,26 @@ class API():
         return resp
 
     is_alive = property(GetIsAlive)
+
+URL_LOGIN_USER = "/api/LoginUser"
+URL_LOGIN_CONTROL = "/api/LoginUserControl"
+URL_SESSIONREFRESH = "/api/SessionRefresh"
+URL_GETEQUITYINFO = "/api/GetEquityInfo"
+URL_GETSUBACCOUNTS = "/api/GetSubAccounts"
+URL_INSTANTPOSITION = "/api/InstantPosition"
+URL_TODAYSTRANSACTION = "/api/TodaysTransaction"
+URL_GETEQUITYORDERHISTORY = "/api/GetEquityOrderHistory"
+URL_VIOPCUSTOMEROVERALL = "/api/ViopCustomerOverall"
+URL_VIOPCUSTOMERTRANSACTIONS = "/api/ViopCustomerTransactions"
+URL_VIOPCOLLETERALINFO = "/api/ViopColleteralInfo"
+URL_RISKSIMULATION = "/api/RiskSimulation"
+URL_ACCOUNTEXTRE = "/api/AccountExtre"
+URL_CASHFLOW = "/api/CashFlow"
+URL_GETCANDLEDATA = "/api/GetCandleData"
+URL_SENDORDER = "/api/SendOrder"
+URL_MODIFYORDER = "/api/ModifyOrder"
+URL_DELETEORDER = "/api/DeleteOrder"
+URL_GETVIOPORDERHISTORY = "/api/GetViopOrderHistory"
+URL_EQUITY_ORDER_HISTORY = "/api/GetEquityOrderHistory"
+URL_TODAYS_TRANSACTION = "/api/TodaysTransaction"
+URL_RISKSIMULATION = "/api/RiskSimulation"

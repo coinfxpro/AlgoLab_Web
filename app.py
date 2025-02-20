@@ -145,6 +145,9 @@ def dashboard():
         
         # Portföy verisini düzenle
         portfolio = []
+        total_cost = 0
+        total_value = 0
+        
         if portfolio_data and isinstance(portfolio_data, list):
             # Her pozisyon için veriyi düzenle
             for position in portfolio_data:
@@ -165,16 +168,20 @@ def dashboard():
                             print(f"Error converting numeric values for position: {code}")
                             continue
                         
+                        # Toplam maliyet ve değer hesapla
+                        position_cost = cost * total_stock if total_stock > 0 else 0
+                        total_cost += position_cost
+                        total_value += total_amount
+                        
                         # Kar/zarar yüzdesi hesapla
-                        total_cost = cost * total_stock if total_stock > 0 else 0
-                        kar_zarar_yuzde = (profit / total_cost * 100) if total_cost > 0 else 0
+                        kar_zarar_yuzde = (profit / position_cost * 100) if position_cost > 0 else 0
                         
                         portfolio.append({
                             'symbol': code,
                             'lot': total_stock,
                             'alis_maliyeti': cost,
                             'guncel_fiyat': unit_price,
-                            'toplam_maliyet': total_cost,
+                            'toplam_maliyet': position_cost,
                             'toplam_deger': total_amount,
                             'kar_zarar': profit,
                             'kar_zarar_yuzde': round(kar_zarar_yuzde, 2)
@@ -183,82 +190,38 @@ def dashboard():
                     print(f"Error processing position: {str(e)}")
                     continue
         
-        # Emir geçmişi ve son işlemler
-        print("Getting order history and recent transactions...")
-        orders = {
-            'bekleyen': [],
-            'gerceklesen': [],
-            'iptal': [],
-            'son_islemler': []
-        }
-        
+        # Portföy özeti
+        print("Getting portfolio summary...")
+        portfolio_summary = None
         try:
-            # Emir geçmişi al
-            order_history = api_instance.GetEquityOrderHistory(id="", subAccount="")
-            print(f"Order history received: {order_history}")
-            
-            if order_history and isinstance(order_history, list):
-                for order in order_history:
-                    if isinstance(order, dict):
-                        # Tarih bilgisini düzenle
-                        try:
-                            order['date'] = datetime.strptime(order.get('date', ''), '%Y-%m-%d %H:%M:%S').strftime('%d.%m.%Y %H:%M:%S')
-                        except:
-                            order['date'] = order.get('date', '')
-                            
-                        status = str(order.get('status', '')).lower()
-                        if status == 'bekleyen':
-                            orders['bekleyen'].append(order)
-                        elif status in ['gerçekleşen', 'gerceklesen']:
-                            orders['gerceklesen'].append(order)
-                        elif status == 'iptal':
-                            orders['iptal'].append(order)
-            
-            # Günlük işlemleri al
-            today_transactions = api_instance.TodaysTransaction(subAccount="")
-            print(f"Today's transactions received: {today_transactions}")
-            
-            if today_transactions and isinstance(today_transactions, list):
-                for transaction in today_transactions:
-                    if isinstance(transaction, dict):
-                        # API'den gelen veriyi template'in beklediği formata dönüştür
-                        formatted_transaction = {
-                            'id': transaction.get('atpref', '-'),
-                            'symbol': transaction.get('ticker', '-'),
-                            'direction': transaction.get('buysell', '-'),
-                            'price': transaction.get('price', '0'),
-                            'quantity': transaction.get('ordersize', '0'),
-                            'status': transaction.get('description', '-'),
-                            'date': transaction.get('timetransaction', '-')
-                        }
-                        orders['son_islemler'].append(formatted_transaction)
-            
-            # Son işlemleri tarihe göre sırala (en yeniden en eskiye)
-            orders['son_islemler'] = sorted(
-                orders['son_islemler'],
-                key=lambda x: datetime.strptime(x.get('date', '1900-01-01 00:00:00'), '%d.%m.%Y %H:%M:%S' if '.' in x.get('date', '') else '%Y-%m-%d %H:%M:%S'),
-                reverse=True
-            )
-            
+            risk_data = api_instance.RiskSimulation()
+            if risk_data and risk_data.get('success'):
+                content = risk_data.get('content', [{}])[0]
+                portfolio_summary = {
+                    't0_nakit': float(content.get('t0', '0')),
+                    't1_nakit': float(content.get('t1', '0')),
+                    't2_nakit': float(content.get('t2', '0')),
+                    't0_hisse': float(content.get('t0equity', '0')),
+                    't1_hisse': float(content.get('t1equity', '0')),
+                    't2_hisse': float(content.get('t2equity', '0')),
+                    't0_toplam': float(content.get('t0overall', '0')),
+                    't1_toplam': float(content.get('t1overall', '0')),
+                    't2_toplam': float(content.get('t2overall', '0')),
+                    't0_ozkaynakoran': float(content.get('t0capitalrate', '0')),
+                    't1_ozkaynakoran': float(content.get('t1capitalrate', '0')),
+                    't2_ozkaynakoran': float(content.get('t2capitalrate', '0')),
+                    'nakit_haric_toplam': float(content.get('netoverall', '0')),
+                    'aciga_satis_limit': float(content.get('shortfalllimit', '0')),
+                    'kredi_bakiye': float(content.get('credit0', '0'))
+                }
         except Exception as e:
-            print(f"Emir geçmişi alınamadı: {str(e)}")
-        
-        # Son işlemler
-        print("Getting today's transactions...")
-        transactions = []
-        try:
-            trans_data = api_instance.GetTodaysTransaction(sub_account="")
-            print(f"Transaction data received: {trans_data}")
-            
-            if trans_data and isinstance(trans_data, list):
-                transactions = trans_data
-        except Exception as e:
-            print(f"Son işlemler alınamadı: {str(e)}")
+            print(f"Error getting portfolio summary: {str(e)}")
         
         return render_template('dashboard.html', 
                              portfolio=portfolio,
-                             orders=orders,
-                             transactions=transactions)
+                             total_cost=total_cost,
+                             total_value=total_value,
+                             portfolio_summary=portfolio_summary)
     except Exception as e:
         print(f"Dashboard error: {str(e)}")
         flash(f'Hata: {str(e)}', 'error')
@@ -567,6 +530,38 @@ def verify_webhook_signature(payload, signature):
     except Exception as e:
         print(f"Signature verification error: {str(e)}")
         return False
+
+@app.route('/daily_transactions')
+@login_required
+def daily_transactions():
+    try:
+        # Günlük işlemleri al
+        transactions = api_instance.GetTodaysTransactions()
+        
+        if transactions and transactions.get('success'):
+            content = transactions.get('content', [])
+            
+            # İşlemleri formatla
+            formatted_transactions = []
+            for transaction in content:
+                formatted_transactions.append({
+                    'referans': transaction.get('atpref', '-'),
+                    'hisse': transaction.get('ticker', '-'),
+                    'islem_turu': transaction.get('buysell', '-'),
+                    'miktar': transaction.get('ordersize', '0'),
+                    'kalan': transaction.get('remainingsize', '0'),
+                    'fiyat': transaction.get('price', '0'),
+                    'tutar': transaction.get('amount', '0'),
+                    'islem_zamani': transaction.get('timetransaction', '-'),
+                    'durum': transaction.get('description', '-'),
+                    'gerceklesen': transaction.get('fillunit', '0')
+                })
+            
+            return render_template('daily_transactions.html', transactions=formatted_transactions)
+            
+    except Exception as e:
+        flash(f'Hata: {str(e)}', 'error')
+        return redirect(url_for('login'))
 
 if __name__ == '__main__':
     app.run(debug=True)

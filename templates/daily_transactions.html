@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Günlük İşlemler</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>İşlem Zamanı</th>
+                            <th>Referans</th>
+                            <th>Hisse</th>
+                            <th>İşlem Türü</th>
+                            <th>Miktar</th>
+                            <th>Gerçekleşen</th>
+                            <th>Kalan</th>
+                            <th>Fiyat</th>
+                            <th>Tutar</th>
+                            <th>Durum</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transaction in transactions %}
+                        <tr>
+                            <td>{{ transaction.islem_zamani }}</td>
+                            <td>{{ transaction.referans }}</td>
+                            <td>{{ transaction.hisse }}</td>
+                            <td>
+                                <span class="badge {{ 'bg-success' if transaction.islem_turu == 'Alış' else 'bg-danger' }}">
+                                    {{ transaction.islem_turu }}
+                                </span>
+                            </td>
+                            <td>{{ transaction.miktar }}</td>
+                            <td>{{ transaction.gerceklesen }}</td>
+                            <td>{{ transaction.kalan }}</td>
+                            <td>{{ "%.2f"|format(transaction.fiyat|float) }}</td>
+                            <td>{{ "%.2f"|format(transaction.tutar|float) }}</td>
+                            <td>
+                                <span class="badge {{ 'bg-success' if transaction.durum == 'Gerçekleşti' else 'bg-warning' }}">
+                                    {{ transaction.durum }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Her 30 saniyede bir sayfayı yenile
+setInterval(function() {
+    location.reload();
+}, 30000);
+</script>
+{% endblock %}

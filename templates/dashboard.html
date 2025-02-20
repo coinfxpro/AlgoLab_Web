@@ -2,6 +2,183 @@
 
 {% block content %}
 <div class="container mt-4">
+    <!-- Portföy Özeti -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Portföy Özeti</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <h6 class="card-title">Toplam Maliyet</h6>
+                            <p class="h4">₺{{ "%.2f"|format(total_cost) }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <h6 class="card-title">Toplam Değer</h6>
+                            <p class="h4">₺{{ "%.2f"|format(total_value) }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <h6 class="card-title">Kar/Zarar</h6>
+                            {% set profit_loss = total_value - total_cost %}
+                            <p class="h4 {{ 'text-success' if profit_loss > 0 else 'text-danger' }}">
+                                {{ '+' if profit_loss > 0 else '' }}₺{{ "%.2f"|format(profit_loss) }}
+                                <small>({{ "%.2f"|format((profit_loss / total_cost * 100) if total_cost > 0 else 0) }}%)</small>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <h6 class="card-title">Toplam Portföy Değeri</h6>
+                            <p class="h4">₺{{ "%.2f"|format(total_value) }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detaylı Portföy Özeti -->
+    {% if portfolio_summary %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Detaylı Portföy Özeti</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0">Nakit Bakiyesi</h6>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-sm">
+                                <tr>
+                                    <td>T+0:</td>
+                                    <td class="text-end">₺{{ "%.2f"|format(portfolio_summary.t0_nakit) }}</td>
+                                </tr>
+                                <tr>
+                                    <td>T+1:</td>
+                                    <td class="text-end">₺{{ "%.2f"|format(portfolio_summary.t1_nakit) }}</td>
+                                </tr>
+                                <tr>
+                                    <td>T+2:</td>
+                                    <td class="text-end">₺{{ "%.2f"|format(portfolio_summary.t2_nakit) }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0">Hisse Portföy Değeri</h6>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-sm">
+                                <tr>
+                                    <td>T+0:</td>
+                                    <td class="text-end">₺{{ "%.2f"|format(portfolio_summary.t0_hisse) }}</td>
+                                </tr>
+                                <tr>
+                                    <td>T+1:</td>
+                                    <td class="text-end">₺{{ "%.2f"|format(portfolio_summary.t1_hisse) }}</td>
+                                </tr>
+                                <tr>
+                                    <td>T+2:</td>
+                                    <td class="text-end">₺{{ "%.2f"|format(portfolio_summary.t2_hisse) }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0">Toplam Değer</h6>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-sm">
+                                <tr>
+                                    <td>T+0:</td>
+                                    <td class="text-end">₺{{ "%.2f"|format(portfolio_summary.t0_toplam) }}</td>
+                                </tr>
+                                <tr>
+                                    <td>T+1:</td>
+                                    <td class="text-end">₺{{ "%.2f"|format(portfolio_summary.t1_toplam) }}</td>
+                                </tr>
+                                <tr>
+                                    <td>T+2:</td>
+                                    <td class="text-end">₺{{ "%.2f"|format(portfolio_summary.t2_toplam) }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Özkaynak Oranı</h6>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-sm">
+                                <tr>
+                                    <td>T+0:</td>
+                                    <td class="text-end">%{{ "%.2f"|format(portfolio_summary.t0_ozkaynakoran) }}</td>
+                                </tr>
+                                <tr>
+                                    <td>T+1:</td>
+                                    <td class="text-end">%{{ "%.2f"|format(portfolio_summary.t1_ozkaynakoran) }}</td>
+                                </tr>
+                                <tr>
+                                    <td>T+2:</td>
+                                    <td class="text-end">%{{ "%.2f"|format(portfolio_summary.t2_ozkaynakoran) }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Diğer Bilgiler</h6>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-sm">
+                                <tr>
+                                    <td>Nakit Hariç Toplam:</td>
+                                    <td class="text-end">₺{{ "%.2f"|format(portfolio_summary.nakit_haric_toplam) }}</td>
+                                </tr>
+                                <tr>
+                                    <td>Açığa Satış Limiti:</td>
+                                    <td class="text-end">₺{{ "%.2f"|format(portfolio_summary.aciga_satis_limit) }}</td>
+                                </tr>
+                                <tr>
+                                    <td>Kredi Bakiyesi:</td>
+                                    <td class="text-end">₺{{ "%.2f"|format(portfolio_summary.kredi_bakiye) }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Portföy Tablosu -->
     <div class="card">
         <div class="card-header">
@@ -44,88 +221,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Bekleyen Emirler -->
-    <div class="card mt-4">
-        <div class="card-header">
-            <h5 class="mb-0">Bekleyen Emirler</h5>
-        </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Referans</th>
-                            <th>Sembol</th>
-                            <th>Yön</th>
-                            <th>Tip</th>
-                            <th>Fiyat</th>
-                            <th>Miktar</th>
-                            <th>Kalan</th>
-                            <th>Durum</th>
-                            <th>İşlem</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for order in orders.bekleyen %}
-                        <tr>
-                            <td>{{ order.get('atpref', '-') }}</td>
-                            <td>{{ order.get('ticker', '-') }}</td>
-                            <td>{{ order.get('buysell', '-') }}</td>
-                            <td>{{ order.get('pricetype', '-') }}</td>
-                            <td>{{ order.get('waitingprice', '-') }}</td>
-                            <td>{{ order.get('ordersize', '-') }}</td>
-                            <td>{{ order.get('remainingsize', '-') }}</td>
-                            <td>{{ order.get('description', '-') }}</td>
-                            <td>
-                                <button class="btn btn-danger btn-sm" onclick="cancelOrder('{{ order.get('atpref', '') }}')">
-                                    İptal Et
-                                </button>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- Son İşlemler -->
-    <div class="card mt-4">
-        <div class="card-header">
-            <h5 class="mb-0">Son İşlemler</h5>
-        </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Emir No</th>
-                            <th>Sembol</th>
-                            <th>İşlem</th>
-                            <th>Fiyat</th>
-                            <th>Lot</th>
-                            <th>Durum</th>
-                            <th>Tarih</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for order in orders.son_islemler %}
-                        <tr>
-                            <td>{{ order.get('id', '-') }}</td>
-                            <td>{{ order.get('symbol', '-') }}</td>
-                            <td>{{ order.get('direction', '-') }}</td>
-                            <td>{{ order.get('price', 0) }}</td>
-                            <td>{{ order.get('quantity', 0) }}</td>
-                            <td>{{ order.get('status', '-') }}</td>
-                            <td>{{ order.get('date', '-') }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
 </div>
 
 <script>
@@ -133,32 +228,5 @@
 setInterval(function() {
     location.reload();
 }, 30000);
-
-// Emir iptal fonksiyonu
-function cancelOrder(orderId) {
-    if (confirm('Bu emri iptal etmek istediğinize emin misiniz?')) {
-        fetch('/cancel_order', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                order_id: orderId
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('Emir başarıyla iptal edildi.');
-                location.reload();
-            } else {
-                alert('Emir iptal edilirken bir hata oluştu: ' + data.error);
-            }
-        })
-        .catch(error => {
-            alert('Bir hata oluştu: ' + error);
-        });
-    }
-}
 </script>
 {% endblock %}
