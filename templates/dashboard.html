@@ -20,8 +20,17 @@
                 <div class="col-md-3">
                     <div class="card">
                         <div class="card-body text-center">
-                            <h6 class="card-title">Toplam Değer</h6>
-                            <p class="h4">₺{{ "%.2f"|format(total_value) }}</p>
+                            <h6 class="card-title">Nakit Bakiyesi</h6>
+                            {% if portfolio_summary %}
+                            <div class="small text-muted mb-1">
+                                T+0: ₺{{ "%.2f"|format(portfolio_summary.t0_nakit) }}<br>
+                                T+1: ₺{{ "%.2f"|format(portfolio_summary.t1_nakit) }}<br>
+                                T+2: ₺{{ "%.2f"|format(portfolio_summary.t2_nakit) }}
+                            </div>
+                            <p class="h4">₺{{ "%.2f"|format(portfolio_summary.t0_nakit) }}</p>
+                            {% else %}
+                            <p class="h4">₺0.00</p>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
