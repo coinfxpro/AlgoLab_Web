@@ -136,39 +136,55 @@ def logout():
 @login_required
 def dashboard():
     try:
-        # Debug için API çağrılarını logla
+        print("\n=== Dashboard Request Started ===")
         print("Getting portfolio data...")
         
         # Portföy bilgisi
         portfolio_data = api_instance.GetInstantPosition(sub_account="")
-        print(f"Portfolio data received (raw): {portfolio_data}")
+        print(f"Portfolio data received: {len(portfolio_data) if portfolio_data else 0} items")
         
         # Portföy özeti
-        print("Getting portfolio summary...")
+        print("\nGetting portfolio summary...")
         portfolio_summary = None
         try:
             risk_data = api_instance.RiskSimulation()
-            if risk_data and risk_data.get('success'):
-                content = risk_data.get('content', [{}])[0]
-                portfolio_summary = {
-                    't0_nakit': float(content.get('t0', '0')),
-                    't1_nakit': float(content.get('t1', '0')),
-                    't2_nakit': float(content.get('t2', '0')),
-                    't0_hisse': float(content.get('t0equity', '0')),
-                    't1_hisse': float(content.get('t1equity', '0')),
-                    't2_hisse': float(content.get('t2equity', '0')),
-                    't0_toplam': float(content.get('t0overall', '0')),
-                    't1_toplam': float(content.get('t1overall', '0')),
-                    't2_toplam': float(content.get('t2overall', '0')),
-                    't0_ozkaynakoran': float(content.get('t0capitalrate', '0')),
-                    't1_ozkaynakoran': float(content.get('t1capitalrate', '0')),
-                    't2_ozkaynakoran': float(content.get('t2capitalrate', '0')),
-                    'nakit_haric_toplam': float(content.get('netoverall', '0')),
-                    'aciga_satis_limit': float(content.get('shortfalllimit', '0')),
-                    'kredi_bakiye': float(content.get('credit0', '0'))
-                }
+            print(f"\nRisk data success: {risk_data.get('success') if risk_data else False}")
+            print(f"Risk data content: {risk_data.get('content') if risk_data else None}")
+            
+            if risk_data and risk_data.get('success') and risk_data.get('content'):
+                content = risk_data.get('content')
+                if isinstance(content, list) and len(content) > 0:
+                    content = content[0]
+                    print("\nRisk content keys:", content.keys() if content else None)
+                    
+                    portfolio_summary = {
+                        't0_nakit': float(content.get('t0', '0')),
+                        't1_nakit': float(content.get('t1', '0')),
+                        't2_nakit': float(content.get('t2', '0')),
+                        't0_hisse': float(content.get('t0equity', '0')),
+                        't1_hisse': float(content.get('t1equity', '0')),
+                        't2_hisse': float(content.get('t2equity', '0')),
+                        't0_toplam': float(content.get('t0overall', '0')),
+                        't1_toplam': float(content.get('t1overall', '0')),
+                        't2_toplam': float(content.get('t2overall', '0')),
+                        't0_ozkaynakoran': float(content.get('t0capitalrate', '0')),
+                        't1_ozkaynakoran': float(content.get('t1capitalrate', '0')),
+                        't2_ozkaynakoran': float(content.get('t2capitalrate', '0')),
+                        'nakit_haric_toplam': float(content.get('netoverall', '0')),
+                        'aciga_satis_limit': float(content.get('shortfalllimit', '0')),
+                        'kredi_bakiye': float(content.get('credit0', '0'))
+                    }
+                    print("\nPortfolio summary created:", bool(portfolio_summary))
+                    print("Portfolio summary values:")
+                    for key, value in portfolio_summary.items():
+                        print(f"  {key}: {value}")
+                else:
+                    print("\nRisk data content is empty or not a list")
         except Exception as e:
-            print(f"Error getting portfolio summary: {str(e)}")
+            print(f"\nError getting portfolio summary: {str(e)}")
+            print("Error details:", e.__class__.__name__)
+            import traceback
+            print(traceback.format_exc())
         
         # Portföy verisini düzenle
         portfolio = []
