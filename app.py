@@ -201,18 +201,13 @@ def dashboard():
                         if code == 'TRY':
                             total_try_amount = abs(total_amount)  # TRY bakiyesini kaydet
                             profit = 0  # TRY için kar/zarar gösterme
+                            continue  # TRY'yi portföy hesaplamalarına dahil etme
                         
                         # Toplam maliyet ve değer hesapla
                         position_cost = cost * total_stock if total_stock > 0 else 0
                         total_cost += position_cost
-                        
-                        # Toplam değerleri güncelle
-                        if code == 'TRY':
-                            total_value += abs(total_amount)
-                            total_profit_loss += 0  # TRY için kar/zarar hesaplama
-                        else:
-                            total_value += total_amount
-                            total_profit_loss += profit
+                        total_value += total_amount
+                        total_profit_loss += profit
                         
                         # Kar/zarar yüzdesi hesapla
                         kar_zarar_yuzde = (profit / position_cost * 100) if position_cost > 0 else 0
@@ -223,20 +218,33 @@ def dashboard():
                             'alis_maliyeti': cost,
                             'guncel_fiyat': unit_price,
                             'toplam_maliyet': position_cost,
-                            'toplam_deger': abs(total_amount) if code == 'TRY' else total_amount,
+                            'toplam_deger': total_amount,
                             'kar_zarar': profit,
                             'kar_zarar_yuzde': round(kar_zarar_yuzde, 2)
                         })
                 except Exception as e:
                     print(f"Error processing position: {str(e)}")
                     continue
+            
+            # TRY'yi en son ekle
+            if total_try_amount > 0:
+                portfolio.append({
+                    'symbol': 'TRY',
+                    'lot': 0,
+                    'alis_maliyeti': 0,
+                    'guncel_fiyat': 1,
+                    'toplam_maliyet': 0,
+                    'toplam_deger': total_try_amount,
+                    'kar_zarar': 0,
+                    'kar_zarar_yuzde': 0
+                })
         
         return render_template('dashboard.html', 
                              portfolio=portfolio,
                              total_cost=total_cost,
                              total_value=total_value,
                              total_profit_loss=total_profit_loss,
-                             total_try_amount=total_try_amount,  # TRY bakiyesini template'e gönder
+                             total_try_amount=total_try_amount,
                              portfolio_summary=portfolio_summary)
     except Exception as e:
         print(f"Dashboard error: {str(e)}")
