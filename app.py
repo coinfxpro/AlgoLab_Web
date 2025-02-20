@@ -175,6 +175,7 @@ def dashboard():
         total_cost = 0
         total_value = 0
         total_profit_loss = 0
+        total_try_amount = 0  # TRY bakiyesi için yeni değişken
         
         if portfolio_data and isinstance(portfolio_data, list):
             # Her pozisyon için veriyi düzenle
@@ -198,10 +199,8 @@ def dashboard():
                         
                         # TRY bakiyesi için özel durum
                         if code == 'TRY':
-                            # TRY bakiyesini RiskSimulation'dan al
-                            if portfolio_summary:
-                                total_amount = portfolio_summary['t0_nakit']
-                                profit = 0  # TRY için kar/zarar gösterme
+                            total_try_amount = abs(total_amount)  # TRY bakiyesini kaydet
+                            profit = 0  # TRY için kar/zarar gösterme
                         
                         # Toplam maliyet ve değer hesapla
                         position_cost = cost * total_stock if total_stock > 0 else 0
@@ -237,6 +236,7 @@ def dashboard():
                              total_cost=total_cost,
                              total_value=total_value,
                              total_profit_loss=total_profit_loss,
+                             total_try_amount=total_try_amount,  # TRY bakiyesini template'e gönder
                              portfolio_summary=portfolio_summary)
     except Exception as e:
         print(f"Dashboard error: {str(e)}")
