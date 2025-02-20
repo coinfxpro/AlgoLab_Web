@@ -147,6 +147,7 @@ def dashboard():
         portfolio = []
         total_cost = 0
         total_value = 0
+        total_profit_loss = 0
         
         if portfolio_data and isinstance(portfolio_data, list):
             # Her pozisyon için veriyi düzenle
@@ -172,6 +173,12 @@ def dashboard():
                         position_cost = cost * total_stock if total_stock > 0 else 0
                         total_cost += position_cost
                         total_value += total_amount
+                        
+                        # TRY bakiyesi için özel durum - mutlak değer al
+                        if code == 'TRY':
+                            total_profit_loss += abs(profit)
+                        else:
+                            total_profit_loss += profit
                         
                         # Kar/zarar yüzdesi hesapla
                         kar_zarar_yuzde = (profit / position_cost * 100) if position_cost > 0 else 0
@@ -221,6 +228,7 @@ def dashboard():
                              portfolio=portfolio,
                              total_cost=total_cost,
                              total_value=total_value,
+                             total_profit_loss=total_profit_loss,
                              portfolio_summary=portfolio_summary)
     except Exception as e:
         print(f"Dashboard error: {str(e)}")

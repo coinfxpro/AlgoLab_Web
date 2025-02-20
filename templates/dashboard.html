@@ -29,10 +29,9 @@
                     <div class="card">
                         <div class="card-body text-center">
                             <h6 class="card-title">Kar/Zarar</h6>
-                            {% set profit_loss = total_value - total_cost %}
-                            <p class="h4 {{ 'text-success' if profit_loss > 0 else 'text-danger' }}">
-                                {{ '+' if profit_loss > 0 else '' }}₺{{ "%.2f"|format(profit_loss) }}
-                                <small>({{ "%.2f"|format((profit_loss / total_cost * 100) if total_cost > 0 else 0) }}%)</small>
+                            <p class="h4 {{ 'text-success' if total_profit_loss > 0 else 'text-danger' }}">
+                                {{ '+' if total_profit_loss > 0 else '' }}₺{{ "%.2f"|format(total_profit_loss) }}
+                                <small>({{ "%.2f"|format((total_profit_loss / total_cost * 100) if total_cost > 0 else 0) }}%)</small>
                             </p>
                         </div>
                     </div>
