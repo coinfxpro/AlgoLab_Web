@@ -48,127 +48,92 @@
         </div>
     </div>
 
-    <!-- Nakit Bakiyeleri -->
-    {% if portfolio_summary %}
-    <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="mb-0">Nakit Bakiyeleri</h5>
-        </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-sm">
-                    <thead>
-                        <tr>
-                            <th>Valör</th>
-                            <th class="text-end">Bakiye</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>T+0</td>
-                            <td class="text-end">₺{{ "%.2f"|format(portfolio_summary.t0_nakit) }}</td>
-                        </tr>
-                        <tr>
-                            <td>T+1</td>
-                            <td class="text-end">₺{{ "%.2f"|format(portfolio_summary.t1_nakit) }}</td>
-                        </tr>
-                        <tr>
-                            <td>T+2</td>
-                            <td class="text-end">₺{{ "%.2f"|format(portfolio_summary.t2_nakit) }}</td>
-                        </tr>
-                    </tbody>
-                </table>
+    <div class="row mb-4">
+        <!-- Nakit Bakiyeleri -->
+        <div class="col-md-4">
+            {% if portfolio_summary %}
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Nakit Bakiyeleri</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Valör</th>
+                                    <th class="text-end">Bakiye</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>T+0</td>
+                                    <td class="text-end">₺{{ "%.2f"|format(portfolio_summary.t0_nakit) }}</td>
+                                </tr>
+                                <tr>
+                                    <td>T+1</td>
+                                    <td class="text-end">₺{{ "%.2f"|format(portfolio_summary.t1_nakit) }}</td>
+                                </tr>
+                                <tr>
+                                    <td>T+2</td>
+                                    <td class="text-end">₺{{ "%.2f"|format(portfolio_summary.t2_nakit) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
+            {% endif %}
         </div>
-    </div>
-    {% endif %}
 
-    <!-- Detaylı Portföy Özeti -->
-    {% if portfolio_summary %}
-    <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="mb-0">Detaylı Portföy Özeti</h5>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-4">
-                    <div class="card mb-3">
-                        <div class="card-header">
-                            <h6 class="mb-0">Hisse Portföy Değeri</h6>
-                        </div>
-                        <div class="card-body">
-                            <table class="table table-sm">
-                                <tr>
-                                    <td>T+0:</td>
-                                    <td class="text-end">₺{{ "%.2f"|format(portfolio_summary.t0_hisse) }}</td>
-                                </tr>
-                                <tr>
-                                    <td>T+1:</td>
-                                    <td class="text-end">₺{{ "%.2f"|format(portfolio_summary.t1_hisse) }}</td>
-                                </tr>
-                                <tr>
-                                    <td>T+2:</td>
-                                    <td class="text-end">₺{{ "%.2f"|format(portfolio_summary.t2_hisse) }}</td>
-                                </tr>
-                            </table>
-                        </div>
-                    </div>
+        <!-- Özkaynak Oranları -->
+        <div class="col-md-4">
+            {% if portfolio_summary %}
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Özkaynak Oranları</h5>
                 </div>
-                <div class="col-md-4">
-                    <div class="card mb-3">
-                        <div class="card-header">
-                            <h6 class="mb-0">Toplam Değer</h6>
-                        </div>
-                        <div class="card-body">
-                            <table class="table table-sm">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
                                 <tr>
-                                    <td>T+0:</td>
-                                    <td class="text-end">₺{{ "%.2f"|format(portfolio_summary.t0_toplam) }}</td>
+                                    <th>Valör</th>
+                                    <th class="text-end">Oran</th>
                                 </tr>
+                            </thead>
+                            <tbody>
                                 <tr>
-                                    <td>T+1:</td>
-                                    <td class="text-end">₺{{ "%.2f"|format(portfolio_summary.t1_toplam) }}</td>
-                                </tr>
-                                <tr>
-                                    <td>T+2:</td>
-                                    <td class="text-end">₺{{ "%.2f"|format(portfolio_summary.t2_toplam) }}</td>
-                                </tr>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card mb-3">
-                        <div class="card-header">
-                            <h6 class="mb-0">Özkaynak Oranı</h6>
-                        </div>
-                        <div class="card-body">
-                            <table class="table table-sm">
-                                <tr>
-                                    <td>T+0:</td>
+                                    <td>T+0</td>
                                     <td class="text-end">%{{ "%.2f"|format(portfolio_summary.t0_ozkaynakoran) }}</td>
                                 </tr>
                                 <tr>
-                                    <td>T+1:</td>
+                                    <td>T+1</td>
                                     <td class="text-end">%{{ "%.2f"|format(portfolio_summary.t1_ozkaynakoran) }}</td>
                                 </tr>
                                 <tr>
-                                    <td>T+2:</td>
+                                    <td>T+2</td>
                                     <td class="text-end">%{{ "%.2f"|format(portfolio_summary.t2_ozkaynakoran) }}</td>
                                 </tr>
-                            </table>
-                        </div>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
-            <div class="row">
-                <div class="col-md-4">
-                    <div class="card">
-                        <div class="card-header">
-                            <h6 class="mb-0">Diğer Bilgiler</h6>
-                        </div>
-                        <div class="card-body">
-                            <table class="table table-sm">
+            {% endif %}
+        </div>
+
+        <!-- Diğer Bilgiler -->
+        <div class="col-md-4">
+            {% if portfolio_summary %}
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Diğer Bilgiler</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <tbody>
                                 <tr>
                                     <td>Nakit Hariç Toplam:</td>
                                     <td class="text-end">₺{{ "%.2f"|format(portfolio_summary.nakit_haric_toplam) }}</td>
@@ -181,14 +146,14 @@
                                     <td>Kredi Bakiyesi:</td>
                                     <td class="text-end">₺{{ "%.2f"|format(portfolio_summary.kredi_bakiye) }}</td>
                                 </tr>
-                            </table>
-                        </div>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
+            {% endif %}
         </div>
     </div>
-    {% endif %}
 
     <!-- Portföy Tablosu -->
     <div class="card">
