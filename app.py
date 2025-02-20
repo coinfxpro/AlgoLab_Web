@@ -172,12 +172,13 @@ def dashboard():
                         # Toplam maliyet ve değer hesapla
                         position_cost = cost * total_stock if total_stock > 0 else 0
                         total_cost += position_cost
-                        total_value += total_amount
                         
                         # TRY bakiyesi için özel durum - mutlak değer al
                         if code == 'TRY':
+                            total_value += abs(total_amount)  # TRY için toplam değerin mutlak değerini al
                             total_profit_loss += abs(profit)
                         else:
+                            total_value += total_amount
                             total_profit_loss += profit
                         
                         # Kar/zarar yüzdesi hesapla
@@ -189,7 +190,7 @@ def dashboard():
                             'alis_maliyeti': cost,
                             'guncel_fiyat': unit_price,
                             'toplam_maliyet': position_cost,
-                            'toplam_deger': total_amount,
+                            'toplam_deger': abs(total_amount) if code == 'TRY' else total_amount,  # TRY için mutlak değer
                             'kar_zarar': profit,
                             'kar_zarar_yuzde': round(kar_zarar_yuzde, 2)
                         })
