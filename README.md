@@ -26,12 +26,36 @@ pip install -r requirements.txt
 python3 app.py
 ```
 
-2. Tarayıcınızda http://127.0.0.1:5001 adresine gidin
+2. Tarayıcınızda http://127.0.0.1:5000 adresine gidin (veya localhost:5000)
 
-Not: Eğer 5001 portu kullanımdaysa, `app.py` dosyasında port numarasını değiştirebilirsiniz:
+Not: Eğer 5000 portu kullanımdaysa, `app.py` dosyasında port numarasını değiştirebilirsiniz:
 ```python
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)  # Port numarasını değiştirin
+    app.run(debug=True, port=5000)  # Port numarasını değiştirin
+```
+
+### Port Kullanım Sorunu ve Çözümü
+
+Eğer "Port 5000 is in use by another program" hatası alırsanız, aşağıdaki adımları izleyebilirsiniz:
+
+1. Portu kullanan işlemi bulun:
+```bash
+lsof -i :5000
+```
+
+2. İşlemi sonlandırın (PID, yukarıdaki komuttan alınan işlem ID'sidir):
+```bash
+kill -9 <PID>
+```
+
+3. Veya tek komutla:
+```bash
+kill -9 $(lsof -t -i:5000)
+```
+
+4. Uygulamayı yeniden başlatın:
+```bash
+python3 app.py
 ```
 
 3. Giriş ekranında:
