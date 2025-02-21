@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Webhook Ayarları</h2>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Webhook Secret Key</h5>
+            <p class="card-text">
+                Bu secret key, TradingView webhook'larını doğrulamak için kullanılır. 
+                TradingView'da webhook mesajı gönderirken, bu secret key'i mesaj içinde 'secret' parametresi olarak göndermelisiniz.
+            </p>
+            
+            <form method="POST">
+                <div class="form-group">
+                    <label for="webhook_secret">Secret Key</label>
+                    <input type="text" 
+                           class="form-control" 
+                           id="webhook_secret" 
+                           name="webhook_secret" 
+                           value="{{ current_secret }}"
+                           placeholder="Secret key girin veya mevcut olanı değiştirin"
+                           required>
+                </div>
+                <button type="submit" class="btn btn-primary mt-3">Kaydet</button>
+            </form>
+            
+            {% if current_secret %}
+            <div class="mt-4">
+                <h5>TradingView Webhook Ayarları</h5>
+                <p>TradingView'da webhook oluştururken aşağıdaki ayarları kullanın:</p>
+                <ul>
+                    <li><strong>Webhook URL:</strong> <code>{{ request.host_url }}webhook/tradingview</code></li>
+                    <li><strong>Format:</strong> JSON</li>
+                </ul>
+                
+                <h6>Örnek Webhook Mesajı:</h6>
+                <pre><code>{
+    "secret": "{{ current_secret }}",  // Webhook secret key
+    "symbol": "ISCTR",
+    "side": "BUY",      // BUY veya SELL
+    "type": "LIMIT",    // LIMIT veya MARKET
+    "price": "14.00",   // Limit emirler için fiyat
+    "quantity": "1"     // İşlem miktarı
+}</code></pre>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

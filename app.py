@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from algolab import API
 from config import URL_LOGIN_CONTROL  # URL'yi config'den al
 import pandas as pd
@@ -10,8 +11,18 @@ from datetime import datetime, timedelta
 import os
 import hmac
 import hashlib
+from models import db, UserCredentials
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///algolab.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db.init_app(app)
+
+with app.app_context():
+    db.create_all()
+
 app.secret_key = os.urandom(24)  # Session için gerekli
 
 # API nesnesi için global değişken
@@ -42,6 +53,33 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+# User sınıfını güncelle
+class User(UserMixin):
+    def __init__(self, username, apikey=None, password=None, token=None, hash=None):
+        self.id = username
+        self.username = username
+        self.apikey = apikey
+        self.password = password
+        self.token = token
+        self.hash = hash
+
+# Login manager'ı ayarla
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+
+@login_manager.user_loader
+def load_user(user_id):
+    if user_id in session:
+        return User(
+            username=user_id,
+            apikey=session.get('apikey'),
+            password=session.get('password'),
+            token=session.get('token'),
+            hash=session.get('hash')
+        )
+    return None
+
 @app.route('/')
 def index():
     if 'logged_in' in session:
@@ -69,6 +107,7 @@ def login():
             session['api_key'] = api_key
             session['username'] = username
             session['password'] = password
+            session['logged_in'] = True
             
             # SMS doğrulama sayfasına yönlendir
             return redirect(url_for('verify_sms'))
@@ -82,15 +121,9 @@ def login():
 def verify_sms():
     global api_instance
     
-    if 'api_key' not in session or api_instance is None:
-        flash('Oturum süresi doldu, lütfen tekrar giriş yapın.', 'error')
-        return redirect(url_for('login'))
-        
     if request.method == 'POST':
         sms_code = request.form.get('sms_code')
         try:
-            print(f"SMS Kodu alındı: {sms_code}")  # Debug log
-            
             # Token ve SMS kodunu şifrele
             token = api_instance.encrypt(api_instance.token)
             sms = api_instance.encrypt(sms_code)
@@ -102,24 +135,34 @@ def verify_sms():
             response = api_instance.post(URL_LOGIN_CONTROL, payload=payload, login=True)
             if not api_instance.error_check(response, "LoginUserControl"):
                 raise Exception("SMS doğrulama başarısız")
-                
+            
             login_control = response.json()
             if not login_control.get("success"):
                 raise Exception(login_control.get("message", "SMS doğrulama başarısız"))
-                
+            
             # Hash'i kaydet
             api_instance.hash = login_control["content"]["hash"]
             api_instance.save_settings()
             
-            if not api_instance.is_alive:
-                raise Exception("Oturum aktif değil")
+            # Kullanıcı nesnesini oluştur ve giriş yap
+            user = User(
+                username=session.get('username'),
+                apikey=session.get('api_key'),
+                password=session.get('password'),
+                token=api_instance.token,
+                hash=api_instance.hash
+            )
+            login_user(user)
             
+            # Session'a bilgileri kaydet
+            session['token'] = api_instance.token
+            session['hash'] = api_instance.hash
             session['logged_in'] = True
+            
             flash('Başarıyla giriş yaptınız!', 'success')
-            return redirect(url_for('dashboard'))
+            return redirect(url_for('index'))
             
         except Exception as e:
-            print(f"SMS doğrulama hatası: {str(e)}")  # Debug log
             flash(f'SMS doğrulama hatası: {str(e)}', 'error')
     
     return render_template('verify_sms.html')
@@ -493,94 +536,102 @@ def webhook_orders_data():
     
     return jsonify({'success': True, 'orders': webhook_orders})
 
-# Webhook güvenliği için secret key
-WEBHOOK_SECRET = os.environ.get('WEBHOOK_SECRET', 'your-secret-key')  # Güvenli bir secret key kullanın
+@app.route('/webhook-settings', methods=['GET', 'POST'])
+@login_required
+def webhook_settings():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+        
+    if request.method == 'POST':
+        webhook_secret = request.form.get('webhook_secret')
+        if webhook_secret:
+            # Kullanıcı bilgilerini güncelle veya oluştur
+            user_creds = UserCredentials.query.filter_by(username=session.get('username')).first()
+            if not user_creds:
+                user_creds = UserCredentials(
+                    username=session.get('username'),
+                    api_key=session.get('api_key'),
+                    password=session.get('password'),
+                    webhook_secret=webhook_secret
+                )
+                db.session.add(user_creds)
+            else:
+                user_creds.webhook_secret = webhook_secret
+                user_creds.api_key = session.get('api_key')
+                user_creds.password = session.get('password')
+            
+            db.session.commit()
+            flash('Webhook secret key başarıyla kaydedildi!', 'success')
+            return redirect(url_for('webhook_settings'))
+    
+    # Mevcut webhook secret'ı getir
+    user_creds = UserCredentials.query.filter_by(username=session.get('username')).first()
+    current_secret = user_creds.webhook_secret if user_creds else None
+    
+    return render_template('webhook_settings.html', current_secret=current_secret)
 
+# TradingView Webhook endpoint'ini güncelle
 @app.route('/webhook/tradingview', methods=['POST'])
 def tradingview_webhook():
+    if not request.is_json:
+        return jsonify({"error": "Content-Type must be application/json"}), 400
+    
     try:
-        # Gelen veriyi al
         data = request.get_json()
         
-        # Webhook imzasını kontrol et
-        signature = request.headers.get('X-Tradingview-Webhook-Signature')
-        if not verify_webhook_signature(request.get_data(), signature):
-            return jsonify({'error': 'Invalid signature'}), 401
-            
-        print(f"Received webhook data: {data}")
+        # Webhook secret kontrolü
+        webhook_secret = data.get('secret')
+        if not webhook_secret:
+            return jsonify({"error": "Webhook secret is required in the message body"}), 401
         
-        # Gerekli alanları kontrol et
-        required_fields = ['symbol', 'side', 'quantity', 'price']
-        if not all(field in data for field in required_fields):
-            return jsonify({'error': 'Missing required fields'}), 400
-            
-        # Emir tipini belirle (AL/SAT)
-        side = data['side'].upper()
-        if side not in ['AL', 'SAT']:
-            return jsonify({'error': 'Invalid side. Must be AL or SAT'}), 400
-            
-        # Emir payload'ını hazırla
-        payload = {
-            'symbol': data['symbol'],
-            'price': str(data['price']),
-            'lot': str(data['quantity']),
-            'side': side,
-            'subAccount': '',  # Alt hesap belirtilmemişse boş bırak
-            'orderType': data.get('orderType', 'Limit'),  # Varsayılan olarak Limit emir
-            'validity': data.get('validity', 'GUN'),  # Varsayılan olarak günlük emir
-        }
+        # Secret key'e sahip kullanıcıyı bul
+        user_creds = UserCredentials.query.filter_by(webhook_secret=webhook_secret).first()
+        if not user_creds:
+            return jsonify({"error": "Invalid webhook secret"}), 401
+        
+        # API nesnesi oluştur
+        algo = API(
+            api_key=user_creds.api_key,
+            username=user_creds.username,
+            password=user_creds.password,
+            auto_login=True,
+            verbose=True
+        )
+        
+        # TradingView'dan gelen veriyi Algolab formatına dönüştür
+        symbol = data.get('symbol', '')
+        direction = data.get('side', '').upper()
+        price_type = data.get('type', 'LIMIT').upper()
+        price = str(data.get('price', '0'))
+        lot = str(data.get('quantity', '0'))
+        sub_account = data.get('subAccount', '')
+        
+        # Market emirlerinde özel ayarlar
+        if price_type == 'MARKET':
+            price_type = 'piyasa'  # API dokümantasyonunda belirtilen değeri kullan
+            price = ''  # Piyasa emirlerinde fiyat boş olmalı
+        else:
+            price_type = 'limit'  # Limit emirleri için küçük harf
+        
+        app.logger.info(f"Final order parameters: symbol={symbol}, direction={direction}, price_type={price_type}, price={price}, lot={lot}")
         
         # Emri gönder
-        response = api_instance.SendOrder(**payload)
-        print(f"Order response: {response}")
+        response = algo.SendOrder(
+            symbol=symbol,
+            direction=direction,
+            pricetype=price_type,
+            price=price,
+            lot=lot,
+            sms=False,
+            email=False,
+            subAccount=sub_account
+        )
         
-        if not response or not isinstance(response, dict):
-            raise Exception("Invalid response from API")
-            
-        if not response.get('success', False):
-            raise Exception(response.get('message', 'Order failed'))
-            
-        # Başarılı emri listeye ekle
-        order_id = response.get('content', {}).get('id')
-        webhook_orders.append({
-            'date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'symbol': data['symbol'],
-            'side': side,
-            'quantity': data['quantity'],
-            'price': data['price'],
-            'status': 'waiting',
-            'order_id': order_id,
-            'source': 'TradingView'
-        })
-            
-        return jsonify({
-            'success': True,
-            'message': 'Order placed successfully',
-            'order_id': order_id
-        })
+        return jsonify(response)
         
     except Exception as e:
-        print(f"Webhook error: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-def verify_webhook_signature(payload, signature):
-    """Webhook imzasını doğrula"""
-    try:
-        if not signature:
-            return False
-            
-        # HMAC-SHA256 ile imzayı hesapla
-        expected_signature = hmac.new(
-            WEBHOOK_SECRET.encode(),
-            payload,
-            hashlib.sha256
-        ).hexdigest()
-        
-        # Hesaplanan imza ile gelen imzayı karşılaştır
-        return hmac.compare_digest(expected_signature, signature)
-    except Exception as e:
-        print(f"Signature verification error: {str(e)}")
-        return False
+        app.logger.error(f"Webhook error: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/daily_transactions')
 @login_required
