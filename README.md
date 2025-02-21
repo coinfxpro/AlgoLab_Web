@@ -48,7 +48,7 @@ python
 python app.py
 ```
 
-2. Tarayıcınızda `http://127.0.0.1:5000` adresine gidin
+2. Tarayıcınızda `http://127.0.0.1:5001` adresine gidin
 
 3. Giriş yapın:
    - API Anahtarı: Algolab'den aldığınız API anahtarı
@@ -116,7 +116,7 @@ TradingView'de alert oluştururken aşağıdaki JSON formatını kullanın:
 3. "Create Alert" butonuna tıklayın
 4. "Webhook URL" alanına:
    ```
-   http://your-server:5000/webhook/tradingview
+   http://your-server:5001/webhook/tradingview
    ```
 5. "Message" alanına yukarıdaki JSON formatında mesajınızı yazın
 6. "Save" ile alert'i kaydedin
@@ -127,12 +127,12 @@ Webhook'u test etmek için cURL kullanabilirsiniz:
 
 ```bash
 # Market Emri Testi
-curl -X POST http://localhost:5000/webhook/tradingview \
+curl -X POST http://localhost:5001/webhook/tradingview \
   -H "Content-Type: application/json" \
   -d '{"secret":"your_secret","symbol":"SASA","side":"BUY","type":"MARKET","quantity":"1"}'
 
 # Limit Emri Testi
-curl -X POST http://localhost:5000/webhook/tradingview \
+curl -X POST http://localhost:5001/webhook/tradingview \
   -H "Content-Type: application/json" \
   -d '{"secret":"your_secret","symbol":"SASA","side":"BUY","type":"LIMIT","price":"3.55","quantity":"1"}'
 ```
@@ -152,16 +152,16 @@ curl -X POST http://localhost:5000/webhook/tradingview \
 
 ## Sorun Giderme
 
-**Port 5000 kullanımda hatası:**
+**Port 5001 kullanımda hatası:**
 ```bash
 # Portu kullanan işlemi bulun
-lsof -i :5000
+lsof -i :5001
 
 # İşlemi sonlandırın
 kill -9 <PID>
 
 # Veya tek komutla
-kill -9 $(lsof -t -i:5000)
+kill -9 $(lsof -t -i:5001)
 ```
 
 ## Lisans
