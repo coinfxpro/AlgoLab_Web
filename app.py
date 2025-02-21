@@ -12,6 +12,8 @@ import os
 import hmac
 import hashlib
 from models import db, UserCredentials
+import threading
+import time
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key')
@@ -27,6 +29,23 @@ app.secret_key = os.urandom(24)  # Session için gerekli
 
 # API nesnesi için global değişken
 api_instance = None
+last_login_time = None
+
+# Oturum yenileme fonksiyonu
+def refresh_session():
+    global api_instance
+    while True:
+        time.sleep(600)  # 10 dakika bekle
+        if api_instance:
+            try:
+                api_instance.RefreshSession()  # Oturum yenileme metodunu çağır
+                app.logger.info("Oturum başarıyla yenilendi.")
+            except Exception as e:
+                app.logger.error(f"Oturum yenileme hatası: {str(e)}")
+
+# Oturum yenileme thread'ini başlat
+session_refresh_thread = threading.Thread(target=refresh_session, daemon=True)
+session_refresh_thread.start()
 
 # Webhook emirlerini saklamak için global liste
 webhook_orders = []
@@ -88,7 +107,7 @@ def index():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    global api_instance
+    global api_instance, last_login_time
     
     if request.method == 'POST':
         api_key = request.form.get('api_key')
@@ -102,6 +121,9 @@ def login():
             # İlk login işlemi
             if not api_instance.LoginUser():
                 raise Exception("Login başarısız")
+            
+            # Login zamanını kaydet
+            last_login_time = datetime.now()
             
             # Session'a bilgileri kaydet
             session['api_key'] = api_key
@@ -143,6 +165,12 @@ def verify_sms():
             # Hash'i kaydet
             api_instance.hash = login_control["content"]["hash"]
             api_instance.save_settings()
+            
+            # Hash'i veritabanına kaydet
+            user = UserCredentials.query.filter_by(username=session.get('username')).first()
+            if user:
+                user.hash_value = api_instance.hash
+                db.session.commit()
             
             # Kullanıcı nesnesini oluştur ve giriş yap
             user = User(
@@ -589,14 +617,21 @@ def tradingview_webhook():
         if not user_creds:
             return jsonify({"error": "Invalid webhook secret"}), 401
         
-        # API nesnesi oluştur
+        if not user_creds.hash_value:
+            return jsonify({"error": "User has not completed SMS verification"}), 401
+        
+        # API nesnesi oluştur ve hash ile başlat
         algo = API(
             api_key=user_creds.api_key,
             username=user_creds.username,
             password=user_creds.password,
-            auto_login=True,
+            auto_login=False,
             verbose=True
         )
+        
+        # Hash değerini ayarla
+        algo.hash = user_creds.hash_value
+        algo.save_settings()
         
         # TradingView'dan gelen veriyi Algolab formatına dönüştür
         symbol = data.get('symbol', '')
@@ -604,7 +639,6 @@ def tradingview_webhook():
         price_type = data.get('type', 'LIMIT').upper()
         price = str(data.get('price', '0'))
         lot = str(data.get('quantity', '0'))
-        sub_account = data.get('subAccount', '')
         
         # Market emirlerinde özel ayarlar
         if price_type == 'MARKET':
@@ -612,19 +646,19 @@ def tradingview_webhook():
             price = ''  # Piyasa emirlerinde fiyat boş olmalı
         else:
             price_type = 'limit'  # Limit emirleri için küçük harf
-        
+            
         app.logger.info(f"Final order parameters: symbol={symbol}, direction={direction}, price_type={price_type}, price={price}, lot={lot}")
         
         # Emri gönder
         response = algo.SendOrder(
             symbol=symbol,
-            direction=direction,
+            direction='A' if direction == 'BUY' else 'S',
             pricetype=price_type,
             price=price,
             lot=lot,
             sms=False,
             email=False,
-            subAccount=sub_account
+            subAccount=""
         )
         
         return jsonify(response)
@@ -666,4 +700,4 @@ def daily_transactions():
         return redirect(url_for('login'))
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5001)
