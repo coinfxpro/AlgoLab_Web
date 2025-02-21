@@ -1,154 +1,167 @@
-# Algolab Trading Dashboard
+# AlgoLab Web Trading Platform
 
-Algolab.com.tr API'sini kullanarak geliştirilmiş bir web trading uygulaması.
+Algolab.com.tr API'sini kullanarak geliştirilmiş web tabanlı trading platformu.
 
 ## Özellikler
 
 - Kullanıcı girişi ve SMS doğrulama
-- Canlı borsa verilerini görüntüleme
-- Mum grafiği (Candlestick chart)
-- Hacim grafiği
-- Portföy görüntüleme
+- Canlı borsa verileri ve grafikler
+- Portföy yönetimi
 - Alım/Satım işlemleri
 - Emir takibi
+- TradingView webhook entegrasyonu
 
 ## Kurulum
 
-1. Gerekli paketleri yükleyin:
+1. Repo'yu klonlayın:
+```bash
+git clone https://github.com/coinfxpro/AlgoLab_Web.git
+cd AlgoLab_Web
+```
+
+2. Virtual environment oluşturun (opsiyonel ama önerilen):
+```bash
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# veya
+.\venv\Scripts\activate  # Windows
+```
+
+3. Gerekli paketleri yükleyin:
 ```bash
 pip install -r requirements.txt
+```
+
+4. SQLite veritabanını oluşturun:
+```bash
+python
+>>> from app import app, db
+>>> with app.app_context():
+...     db.create_all()
+>>> exit()
 ```
 
 ## Kullanım
 
 1. Uygulamayı başlatın:
 ```bash
-python3 app.py
+python app.py
 ```
 
-2. Tarayıcınızda http://127.0.0.1:5000 adresine gidin (veya localhost:5000)
+2. Tarayıcınızda `http://127.0.0.1:5000` adresine gidin
 
-Not: Eğer 5000 portu kullanımdaysa, `app.py` dosyasında port numarasını değiştirebilirsiniz:
-```python
-if __name__ == '__main__':
-    app.run(debug=True, port=5000)  # Port numarasını değiştirin
-```
-
-### Port Kullanım Sorunu ve Çözümü
-
-Eğer "Port 5000 is in use by another program" hatası alırsanız, aşağıdaki adımları izleyebilirsiniz:
-
-1. Portu kullanan işlemi bulun:
-```bash
-lsof -i :5000
-```
-
-2. İşlemi sonlandırın (PID, yukarıdaki komuttan alınan işlem ID'sidir):
-```bash
-kill -9 <PID>
-```
-
-3. Veya tek komutla:
-```bash
-kill -9 $(lsof -t -i:5000)
-```
-
-4. Uygulamayı yeniden başlatın:
-```bash
-python3 app.py
-```
-
-3. Giriş ekranında:
-   - API Anahtarı: Algolab'den aldığınız API anahtarı (API-XXXXX formatında)
-   - TC Kimlik No / Kullanıcı Adı: Denizbank kullanıcı adınız
-   - Şifre: Denizbank internet bankacılığı şifreniz
+3. Giriş yapın:
+   - API Anahtarı: Algolab'den aldığınız API anahtarı
+   - Kullanıcı Adı: Denizbank kullanıcı adınız
+   - Şifre: Denizbank şifreniz
 
 4. SMS doğrulama kodunu girin
 
-## Sunucuya Deploy Etme
+## TradingView Webhook Entegrasyonu
 
-1. Heroku:
-```bash
-git push heroku main
-```
+### Webhook Ayarları
 
-2. DigitalOcean, AWS veya başka bir sunucuda:
-```bash
-gunicorn app:app
-```
+1. Uygulamada "Webhook Ayarları" sayfasına gidin
+2. Size özel webhook secret key'inizi görüntüleyin veya yenisini oluşturun
+3. Bu secret key'i TradingView alert'lerinizde kullanacaksınız
 
-## Webhook Kullanımı
+### TradingView Alert Formatı
 
-### TradingView Webhook Entegrasyonu
-
-Uygulama, TradingView'den gelen sinyalleri otomatik olarak emirlere dönüştürebilen bir webhook endpoint'i içerir.
-
-#### Webhook Endpoint Bilgileri
-
-- **URL**: `http://your-server/webhook/tradingview`
-- **Method**: `POST`
-- **Headers**:
-  - `Content-Type: application/json`
-  - `X-Tradingview-Webhook-Signature: <HMAC-SHA256 signature>`
-
-#### Request Body Formatı
+TradingView'de alert oluştururken aşağıdaki JSON formatını kullanın:
 
 ```json
 {
-    "symbol": "GARAN",
-    "side": "AL",        // "AL" veya "SAT"
-    "quantity": "100",   // Lot miktarı
-    "price": "20.50",    // Emir fiyatı
-    "orderType": "Limit", // Opsiyonel, varsayılan: "Limit"
-    "validity": "GUN"     // Opsiyonel, varsayılan: "GUN"
+    "secret": "your_webhook_secret_key",
+    "symbol": "SASA",
+    "side": "BUY",        // BUY veya SELL
+    "type": "MARKET",     // MARKET veya LIMIT
+    "price": "3.55",      // LIMIT emirler için fiyat
+    "quantity": "1"       // Lot miktarı
 }
 ```
 
-#### Webhook Güvenliği
+### Emir Tipleri
 
-1. Webhook güvenliği için HMAC-SHA256 imzalama kullanılmaktadır
-2. `WEBHOOK_SECRET` environment variable'ı ile secret key belirleyebilirsiniz:
-   ```bash
-   export WEBHOOK_SECRET=your-secret-key
+1. **Market (Piyasa) Emirleri**
+   ```json
+   {
+       "secret": "your_secret",
+       "symbol": "SASA",
+       "side": "BUY",
+       "type": "MARKET",
+       "quantity": "1"
+   }
    ```
-3. TradingView'de alert oluştururken webhook URL'sine ek olarak bu secret key ile imzalanmış bir header eklemeniz gerekir
+   - Market emirlerinde `price` belirtmeyin
+   - Emir anında piyasa fiyatından gerçekleşir
 
-#### TradingView'de Alert Oluşturma
+2. **Limit Emirleri**
+   ```json
+   {
+       "secret": "your_secret",
+       "symbol": "SASA",
+       "side": "BUY",
+       "type": "LIMIT",
+       "price": "3.55",
+       "quantity": "1"
+   }
+   ```
+   - Limit emirlerde mutlaka `price` belirtin
+   - Emir belirtilen fiyattan gerçekleşir
 
-1. TradingView'de bir indikatör veya strateji oluşturun
-2. Alerts sekmesine gidin
+### TradingView'de Alert Oluşturma
+
+1. TradingView'de bir indikatör veya strateji seçin
+2. "Alerts" sekmesine gidin
 3. "Create Alert" butonuna tıklayın
-4. "Webhook URL" alanına webhook endpoint'inizi girin
-5. "Message" alanına yukarıdaki JSON formatında bir mesaj girin
-6. Alert'i kaydedin
+4. "Webhook URL" alanına:
+   ```
+   http://your-server:5000/webhook/tradingview
+   ```
+5. "Message" alanına yukarıdaki JSON formatında mesajınızı yazın
+6. "Save" ile alert'i kaydedin
 
-#### Webhook Emirlerini İzleme
-
-Webhook üzerinden gönderilen emirleri ve durumlarını `/webhook/orders` sayfasından takip edebilirsiniz. Bu sayfada:
-
-- Emir tarih ve saati
-- İşlem yapılan sembol
-- İşlem yönü (AL/SAT)
-- Miktar ve fiyat bilgileri
-- Emir durumu
-- Emir ID
-- Sinyal kaynağı
-
-bilgilerini görebilirsiniz. Sayfa her 30 saniyede bir otomatik olarak güncellenir.
-
-#### Test Etme
+### Test Etme
 
 Webhook'u test etmek için cURL kullanabilirsiniz:
 
 ```bash
-# HMAC-SHA256 imzası oluştur
-SIGNATURE=$(echo -n '{"symbol":"GARAN","side":"AL","quantity":"100","price":"20.50"}' | openssl dgst -sha256 -hmac "your-secret-key" -hex | cut -d' ' -f2)
-
-# Webhook'u test et
+# Market Emri Testi
 curl -X POST http://localhost:5000/webhook/tradingview \
   -H "Content-Type: application/json" \
-  -H "X-Tradingview-Webhook-Signature: $SIGNATURE" \
-  -d '{"symbol":"GARAN","side":"AL","quantity":"100","price":"20.50"}'
+  -d '{"secret":"your_secret","symbol":"SASA","side":"BUY","type":"MARKET","quantity":"1"}'
+
+# Limit Emri Testi
+curl -X POST http://localhost:5000/webhook/tradingview \
+  -H "Content-Type: application/json" \
+  -d '{"secret":"your_secret","symbol":"SASA","side":"BUY","type":"LIMIT","price":"3.55","quantity":"1"}'
+```
+
+## Notlar
+
+- Market emirleri anında piyasa fiyatından gerçekleşir
+- Limit emirler belirtilen fiyata gelene kadar bekler
+- Her kullanıcının kendine özel webhook secret key'i vardır
+- Webhook üzerinden gelen emirler "Webhook Emirleri" sayfasında görüntülenir
+
+## Güvenlik
+
+- Her webhook isteği için secret key kontrolü yapılır
+- Secret key'ler veritabanında güvenli şekilde saklanır
+- Her kullanıcı sadece kendi emirlerini görüntüleyebilir
+
+## Sorun Giderme
+
+**Port 5000 kullanımda hatası:**
+```bash
+# Portu kullanan işlemi bulun
+lsof -i :5000
+
+# İşlemi sonlandırın
+kill -9 <PID>
+
+# Veya tek komutla
+kill -9 $(lsof -t -i:5000)
 ```
 
 ## Lisans
