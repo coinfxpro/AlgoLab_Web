@@ -55,11 +55,11 @@ Aşağıdaki parametreleri AES Algoritmasını kullanarak APIKEY içerisindeki �
 
 Örneğin:
 
-APIKEY: APIKEY-04YW0b9Cb8S0MrgBw/Y4iPYi2hjIidW7qj4hrhBhwZg=
+APIKEY: APIKEY-XXXXXXXXXXX
 
 Yukarıdaki APIKEY’ e göre AES Algoritmasında kullanılacak key aşağıdaki şekildedir.
 
-aes.Key: 04YW0b9Cb8S0MrgBw/Y4iPYi2hjIidW7qj4hrhBhwZg=
+aes.Key: xxxxxxxxxx
 
  
 
@@ -73,8 +73,8 @@ Password	String	İnternet Bankacılığı Şifresi
 Örnek Request Body
 
 {
-   "Username": "YTZ1RF2Q04T/nZThi0JzUA==",
-   "Password": "9LHZEiA2AhKsAtM4yOOrEw=="
+   "Username": "XXXXXXXX==",
+   "Password": "XXXXXXXX=="
 }
 
  
@@ -91,7 +91,7 @@ token	String	SMS için gerekli token
    "success": true,
    "message": "",
    "content": {
-      "token": "Ys/WhU/D37vO71VIBumDRhZLmkcMlzyb3TKJVWxLlpb/4BByYLNfQ07dEe66P3Ab"
+      "token": "Ys/WhU/xxxxxxxxxxxMlzyb3TKJVWxLlpb/xxxxxxxxxx"
    }
 }
 
@@ -111,7 +111,7 @@ Password	String	SMS Kodu
 Örnek Request Body
 
 {
-   "token": "Ys/WhU/D37vO71VIBumDRhZLmkcMlzyb3TKJVWxLlpb/4BByYLNfQ07dEe66P3Ab",
+   "token": "Ys/WhU/xxxxxxxxxxxMlzyb3TKJVWxLlpb/xxxxxxxxxx",
    "Password": "9LHZEiA2AhKsAtM4yOOrEw=="
 }
 
