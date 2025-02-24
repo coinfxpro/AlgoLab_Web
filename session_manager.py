@@ -9,6 +9,10 @@ class SessionManager:
         self.running = True
         self.start_token_refresh_thread()
     
+    def get_session(self, api_key):
+        """Get session for given API key"""
+        return self.sessions.get(api_key)
+
     def start_token_refresh_thread(self):
         def refresh_tokens():
             while self.running:
@@ -27,6 +31,7 @@ class SessionManager:
             self.token_refresh_thread.start()
 
     def refresh_session_token(self, api_key):
+        """Refresh token for given API key"""
         session = self.sessions.get(api_key)
         if not session:
             return False
@@ -44,6 +49,7 @@ class SessionManager:
         return False
 
     def create_session(self, api_key, token, refresh_token):
+        """Create new session for API key"""
         self.sessions[api_key] = {
             'token': token,
             'refresh_token': refresh_token,
