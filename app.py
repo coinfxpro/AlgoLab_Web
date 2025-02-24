@@ -615,31 +615,19 @@ def tradingview_webhook():
             print(f"Error: Invalid API key format: {api_key}")
             return jsonify({'error': 'Invalid API key format'}), 400
 
-        # Session kontrolü ve otomatik login
-        session = session_manager.get_session(api_key)
-        if not session:
-            try:
-                print(f"No session found for {api_key}, creating new session...")
-                algolab_api = AlgolabAPI(api_key)
-                token_info = algolab_api.get_token()
-                if token_info:
-                    session_manager.create_session(
-                        api_key,
-                        token_info['token'],
-                        token_info['refresh_token']
-                    )
-                    print(f"New session created for {api_key}")
-                    session = session_manager.get_session(api_key)
-            except Exception as e:
-                print(f"Auto-login failed: {str(e)}")
-                return jsonify({'error': f'Auto-login failed: {str(e)}'}), 401
-
-        # Emir işleme
+        # Önce login olalım
         try:
             algolab_api = AlgolabAPI(api_key)
-            if session:
-                algolab_api.access_token = session['token']  # access_token olarak değiştirildi
+            # API key'den username oluştur
+            username = api_key.replace('API-', '')
+            # Login işlemi
+            login_success = algolab_api.connect(username, "your_password")  # Şifreyi güvenli bir yerden alın
+            if not login_success:
+                return jsonify({'error': 'Login failed'}), 401
             
+            print(f"Login successful, token: {algolab_api.access_token}")
+            
+            # Emir gönder
             result = algolab_api.place_order(
                 symbol=data.get('symbol'),
                 side=data.get('side'),
@@ -649,9 +637,10 @@ def tradingview_webhook():
             )
             print(f"Order placed successfully: {result}")
             return jsonify(result), 200
+            
         except Exception as e:
-            print(f"Order placement failed: {str(e)}")
-            return jsonify({'error': f'Order placement failed: {str(e)}'}), 500
+            print(f"Error: {str(e)}")
+            return jsonify({'error': str(e)}), 500
 
     except Exception as e:
         print(f"Webhook error: {str(e)}")
