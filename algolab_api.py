@@ -7,7 +7,7 @@ import threading
 import schedule
 
 class AlgoLabAPI:
-    def __init__(self):
+    def __init__(self, api_key=None):
         self.hostname = "www.algolab.com.tr"
         self.api_hostname = f"https://{self.hostname}"
         self.api_url = self.api_hostname
@@ -17,22 +17,57 @@ class AlgoLabAPI:
         self.ws = None
         self.connected = False
         self.headers = {}
+        if api_key:
+            self.headers = {
+                "APIKEY": api_key,
+                "Content-Type": "application/json"
+            }
+
+    def refresh_token(self, refresh_token=None):
+        """Refresh access token using refresh token"""
+        try:
+            if not refresh_token and not self.refresh_token:
+                raise Exception("No refresh token available")
+            
+            url = f"{self.api_url}/api/RefreshToken"
+            headers = self.headers.copy()
+            
+            if refresh_token:
+                self.refresh_token = refresh_token
+            
+            data = {
+                "refreshToken": self.refresh_token
+            }
+            
+            response = requests.post(url, headers=headers, json=data)
+            response.raise_for_status()
+            result = response.json()
+            
+            if result.get('success'):
+                self.access_token = result.get('token', '')
+                self.refresh_token = result.get('refreshToken', '')
+                return self.access_token
+            else:
+                raise Exception(result.get('message', 'Token refresh failed'))
+        except Exception as e:
+            raise Exception(f"Token refresh error: {str(e)}")
 
     def connect(self, username, password):
         """Login to Algolab API"""
         try:
-            # First, get the API key
-            self.headers = {
-                "APIKEY": f"API-{username}",  # API anahtarınız bu formatta olmalı
-                "Content-Type": "application/json"
-            }
+            # First, get the API key if not already set
+            if not self.headers:
+                self.headers = {
+                    "APIKEY": f"API-{username}",
+                    "Content-Type": "application/json"
+                }
             
             # Login request
             url = f"{self.api_url}/api/LoginUser"
             data = {
                 "username": username,
                 "password": password,
-                "apiKey": f"API-{username}"
+                "apiKey": self.headers.get("APIKEY")
             }
             
             response = requests.post(url, headers=self.headers, json=data)
@@ -41,11 +76,19 @@ class AlgoLabAPI:
             
             if result.get('success'):
                 self.access_token = result.get('token', '')
+                self.refresh_token = result.get('refreshToken', '')  # Store refresh token
                 return True
             else:
                 raise Exception(result.get('message', 'Login failed'))
         except Exception as e:
             raise Exception(f"Login error: {str(e)}")
+
+    def get_token(self):
+        """Return current tokens"""
+        return {
+            'token': self.access_token,
+            'refresh_token': self.refresh_token
+        }
 
     def get_headers(self):
         """Get headers with access token"""
