@@ -700,4 +700,7 @@ def daily_transactions():
         return redirect(url_for('login'))
 
 if __name__ == '__main__':
+    # Worker'ı başlatma komutu
+    os.system('python worker.py &')
     app.run(debug=True, host='0.0.0.0', port=5001)
+
