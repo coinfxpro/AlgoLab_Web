@@ -6,6 +6,8 @@ import threading
 import schedule
 from datetime import datetime
 
+__all__ = ['AlgolabAPI']
+
 class AlgolabAPI:
     def __init__(self, api_key=None):
         self.hostname = "www.algolab.com.tr"
