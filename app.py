@@ -15,7 +15,7 @@ from models import db, UserCredentials
 import threading
 import time
 from session_manager import session_manager
-from algolab import AlgolabAPI
+from algolab_api import AlgolabAPI
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key')
