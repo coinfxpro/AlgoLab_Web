@@ -6,7 +6,7 @@ import websocket
 import threading
 import schedule
 
-class AlgoLabAPI:
+class AlgolabAPI:
     def __init__(self, api_key=None):
         self.hostname = "www.algolab.com.tr"
         self.api_hostname = f"https://{self.hostname}"
