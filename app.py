@@ -602,49 +602,64 @@ def webhook_settings():
 
 @app.route('/webhook/tradingview', methods=['POST'])
 def tradingview_webhook():
+    if not request.is_json:
+        return jsonify({"error": "Content-Type must be application/json"}), 400
+    
     try:
-        data = request.json
+        data = request.get_json()
         print(f"Received webhook data: {data}")
         
-        api_key = data.get('secret')
-        if not api_key:
-            print("Error: No API key provided")
-            return jsonify({'error': 'No API key provided'}), 400
-            
-        if not api_key.startswith('API-'):
-            print(f"Error: Invalid API key format: {api_key}")
-            return jsonify({'error': 'Invalid API key format'}), 400
-
-        # Önce login olalım
-        try:
-            algolab_api = AlgolabAPI(api_key)
-            # API key'den username oluştur
-            username = api_key.replace('API-', '')
-            # Login işlemi
-            login_success = algolab_api.connect(username, "your_password")  # Şifreyi güvenli bir yerden alın
-            if not login_success:
-                return jsonify({'error': 'Login failed'}), 401
-            
-            print(f"Login successful, token: {algolab_api.access_token}")
-            
-            # Emir gönder
-            result = algolab_api.place_order(
-                symbol=data.get('symbol'),
-                side=data.get('side'),
-                order_type=data.get('type'),
-                price=data.get('price'),
-                quantity=data.get('quantity')
-            )
-            print(f"Order placed successfully: {result}")
-            return jsonify(result), 200
-            
-        except Exception as e:
-            print(f"Error: {str(e)}")
-            return jsonify({'error': str(e)}), 500
-
+        # Webhook secret kontrolü
+        webhook_secret = data.get('secret')
+        if not webhook_secret:
+            return jsonify({"error": "Webhook secret is required"}), 401
+        
+        # Secret key'e sahip kullanıcıyı bul
+        user_creds = UserCredentials.query.filter_by(webhook_secret=webhook_secret).first()
+        if not user_creds:
+            return jsonify({"error": "Invalid webhook secret"}), 401
+        
+        # API nesnesi oluştur
+        algo = API(
+            api_key=user_creds.api_key,
+            username=user_creds.username,
+            password=user_creds.password,
+            auto_login=False,
+            verbose=True
+        )
+        
+        # Hash değerini ayarla
+        if user_creds.hash_value:
+            algo.hash = user_creds.hash_value
+            algo.save_settings()
+        
+        # TradingView'dan gelen veriyi Algolab formatına dönüştür
+        symbol = data.get('symbol', '')
+        direction = 'A' if data.get('side', '').upper() == 'BUY' else 'S'
+        price_type = 'piyasa' if data.get('type', '').upper() == 'MARKET' else 'limit'
+        price = '' if price_type == 'piyasa' else str(data.get('price', '0'))
+        lot = str(data.get('quantity', '0'))
+        
+        print(f"Sending order: symbol={symbol}, direction={direction}, price_type={price_type}, price={price}, lot={lot}")
+        
+        # Emri gönder
+        response = algo.SendOrder(
+            symbol=symbol,
+            direction=direction,
+            pricetype=price_type,
+            price=price,
+            lot=lot,
+            sms=False,
+            email=False,
+            subAccount=""
+        )
+        
+        print(f"Order response: {response}")
+        return jsonify(response)
+        
     except Exception as e:
         print(f"Webhook error: {str(e)}")
-        return jsonify({'error': str(e)}), 400
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/daily_transactions')
 @login_required
