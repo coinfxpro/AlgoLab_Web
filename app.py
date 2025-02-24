@@ -604,14 +604,20 @@ def webhook_settings():
 def tradingview_webhook():
     try:
         data = request.json
-        secret = data.get('secret')
+        print(f"Received webhook data: {data}")  # Debug için log
         
+        secret = data.get('secret')
+        if not secret:
+            print("Error: No secret provided")
+            return jsonify({'error': 'No secret provided'}), 400
+            
+        if not secret.startswith('API-'):
+            print(f"Error: Invalid API key format: {secret}")
+            return jsonify({'error': 'Invalid API key format'}), 400
+
         # Webhook secret'ı API key olarak kullanacağız
         api_key = secret
         
-        if not api_key:
-            return jsonify({'error': 'Invalid secret key'}), 401
-
         # Session kontrolü ve gerekirse otomatik login
         session = session_manager.get_session(api_key)
         if not session:
@@ -652,6 +658,7 @@ def tradingview_webhook():
             return jsonify({'error': f'Order placement failed: {str(e)}'}), 500
 
     except Exception as e:
+        print(f"Webhook error: {str(e)}")  # Hata loglaması
         return jsonify({'error': str(e)}), 400
 
 @app.route('/daily_transactions')
