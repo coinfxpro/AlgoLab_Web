@@ -620,7 +620,6 @@ def tradingview_webhook():
         if not session:
             try:
                 print(f"No session found for {api_key}, creating new session...")
-                # API key ile otomatik login
                 algolab_api = AlgolabAPI(api_key)
                 token_info = algolab_api.get_token()
                 if token_info:
@@ -638,7 +637,8 @@ def tradingview_webhook():
         # Emir işleme
         try:
             algolab_api = AlgolabAPI(api_key)
-            algolab_api.access_token = session['token']
+            if session:
+                algolab_api.access_token = session['token']  # access_token olarak değiştirildi
             
             result = algolab_api.place_order(
                 symbol=data.get('symbol'),
