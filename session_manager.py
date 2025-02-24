@@ -1,7 +1,7 @@
 import threading
 import time
 from datetime import datetime, timedelta
-from algolab_api import AlgolabAPI
+from algolab_api import AlgoLabAPI
 
 class SessionManager:
     def __init__(self):
@@ -33,7 +33,7 @@ class SessionManager:
             return False
         
         try:
-            algolab_api = AlgolabAPI(api_key)
+            algolab_api = AlgoLabAPI(api_key)
             new_token = algolab_api.refresh_token(session['refresh_token'])
             if new_token:
                 session['token'] = new_token
