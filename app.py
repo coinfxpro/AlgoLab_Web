@@ -33,17 +33,35 @@ app.secret_key = os.urandom(24)  # Session için gerekli
 api_instance = None
 last_login_time = None
 
+# Global değişkenler
+webhook_sessions = {}  # webhook_secret -> (api_instance, last_refresh_time)
+session_lock = threading.Lock()
+
 # Oturum yenileme fonksiyonu
 def refresh_session():
-    global api_instance
+    global api_instance, webhook_sessions
     while True:
-        time.sleep(600)  # 10 dakika bekle
+        time.sleep(300)  # 5 dakika bekle
+        
+        # Ana API instance'ı yenile
         if api_instance:
             try:
-                api_instance.RefreshSession()  # Oturum yenileme metodunu çağır
-                app.logger.info("Oturum başarıyla yenilendi.")
+                api_instance.RefreshSession()
+                app.logger.info("Ana oturum başarıyla yenilendi.")
             except Exception as e:
-                app.logger.error(f"Oturum yenileme hatası: {str(e)}")
+                app.logger.error(f"Ana oturum yenileme hatası: {str(e)}")
+        
+        # Webhook oturumlarını yenile
+        with session_lock:
+            current_time = time.time()
+            for secret, (api, last_refresh) in list(webhook_sessions.items()):
+                if current_time - last_refresh >= 600:  # 10 dakikada bir
+                    try:
+                        api.RefreshSession()
+                        webhook_sessions[secret] = (api, current_time)
+                        app.logger.info(f"Webhook oturumu yenilendi: {secret}")
+                    except Exception as e:
+                        app.logger.error(f"Webhook oturum yenileme hatası: {str(e)}")
 
 # Oturum yenileme thread'ini başlat
 session_refresh_thread = threading.Thread(target=refresh_session, daemon=True)
@@ -609,31 +627,34 @@ def tradingview_webhook():
         data = request.get_json()
         print(f"Received webhook data: {data}")
         
-        # Webhook secret kontrolü
         webhook_secret = data.get('secret')
         if not webhook_secret:
             return jsonify({"error": "Webhook secret is required"}), 401
         
-        # Secret key'e sahip kullanıcıyı bul
         user_creds = UserCredentials.query.filter_by(webhook_secret=webhook_secret).first()
         if not user_creds:
             return jsonify({"error": "Invalid webhook secret"}), 401
         
-        # API nesnesi oluştur
-        algo = API(
-            api_key=user_creds.api_key,
-            username=user_creds.username,
-            password=user_creds.password,
-            auto_login=False,
-            verbose=True
-        )
+        # Mevcut API instance'ı kontrol et veya yeni oluştur
+        with session_lock:
+            if webhook_secret in webhook_sessions:
+                algo = webhook_sessions[webhook_secret][0]
+            else:
+                algo = API(
+                    api_key=user_creds.api_key,
+                    username=user_creds.username,
+                    password=user_creds.password,
+                    auto_login=False,
+                    verbose=True
+                )
+                
+                if user_creds.hash_value:
+                    algo.hash = user_creds.hash_value
+                    algo.save_settings()
+                
+                webhook_sessions[webhook_secret] = (algo, time.time())
         
-        # Hash değerini ayarla
-        if user_creds.hash_value:
-            algo.hash = user_creds.hash_value
-            algo.save_settings()
-        
-        # TradingView'dan gelen veriyi Algolab formatına dönüştür
+        # Emir gönderme işlemleri...
         symbol = data.get('symbol', '')
         direction = 'A' if data.get('side', '').upper() == 'BUY' else 'S'
         price_type = 'piyasa' if data.get('type', '').upper() == 'MARKET' else 'limit'
@@ -642,7 +663,6 @@ def tradingview_webhook():
         
         print(f"Sending order: symbol={symbol}, direction={direction}, price_type={price_type}, price={price}, lot={lot}")
         
-        # Emri gönder
         response = algo.SendOrder(
             symbol=symbol,
             direction=direction,
