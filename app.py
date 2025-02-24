@@ -604,24 +604,22 @@ def webhook_settings():
 def tradingview_webhook():
     try:
         data = request.json
-        print(f"Received webhook data: {data}")  # Debug için log
+        print(f"Received webhook data: {data}")
         
-        secret = data.get('secret')
-        if not secret:
-            print("Error: No secret provided")
-            return jsonify({'error': 'No secret provided'}), 400
+        api_key = data.get('secret')
+        if not api_key:
+            print("Error: No API key provided")
+            return jsonify({'error': 'No API key provided'}), 400
             
-        if not secret.startswith('API-'):
-            print(f"Error: Invalid API key format: {secret}")
+        if not api_key.startswith('API-'):
+            print(f"Error: Invalid API key format: {api_key}")
             return jsonify({'error': 'Invalid API key format'}), 400
 
-        # Webhook secret'ı API key olarak kullanacağız
-        api_key = secret
-        
-        # Session kontrolü ve gerekirse otomatik login
+        # Session kontrolü ve otomatik login
         session = session_manager.get_session(api_key)
         if not session:
             try:
+                print(f"No session found for {api_key}, creating new session...")
                 # API key ile otomatik login
                 algolab_api = AlgolabAPI(api_key)
                 token_info = algolab_api.get_token()
@@ -631,34 +629,32 @@ def tradingview_webhook():
                         token_info['token'],
                         token_info['refresh_token']
                     )
+                    print(f"New session created for {api_key}")
+                    session = session_manager.get_session(api_key)
             except Exception as e:
+                print(f"Auto-login failed: {str(e)}")
                 return jsonify({'error': f'Auto-login failed: {str(e)}'}), 401
 
         # Emir işleme
-        symbol = data.get('symbol')
-        side = data.get('side')
-        order_type = data.get('type')
-        price = data.get('price')
-        quantity = data.get('quantity')
-
-        # Emir gönderme işlemi
         try:
             algolab_api = AlgolabAPI(api_key)
-            algolab_api.token = session_manager.get_session(api_key)['token']
+            algolab_api.access_token = session['token']
             
             result = algolab_api.place_order(
-                symbol=symbol,
-                side=side,
-                order_type=order_type,
-                price=price,
-                quantity=quantity
+                symbol=data.get('symbol'),
+                side=data.get('side'),
+                order_type=data.get('type'),
+                price=data.get('price'),
+                quantity=data.get('quantity')
             )
+            print(f"Order placed successfully: {result}")
             return jsonify(result), 200
         except Exception as e:
+            print(f"Order placement failed: {str(e)}")
             return jsonify({'error': f'Order placement failed: {str(e)}'}), 500
 
     except Exception as e:
-        print(f"Webhook error: {str(e)}")  # Hata loglaması
+        print(f"Webhook error: {str(e)}")
         return jsonify({'error': str(e)}), 400
 
 @app.route('/daily_transactions')
