@@ -14,6 +14,8 @@ import hashlib
 from models import db, UserCredentials
 import threading
 import time
+from session_manager import session_manager
+from algolab import AlgolabAPI
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key')
@@ -598,74 +600,59 @@ def webhook_settings():
     
     return render_template('webhook_settings.html', current_secret=current_secret)
 
-# TradingView Webhook endpoint'ini güncelle
 @app.route('/webhook/tradingview', methods=['POST'])
 def tradingview_webhook():
-    if not request.is_json:
-        return jsonify({"error": "Content-Type must be application/json"}), 400
-    
     try:
-        data = request.get_json()
+        data = request.json
+        secret = data.get('secret')
         
-        # Webhook secret kontrolü
-        webhook_secret = data.get('secret')
-        if not webhook_secret:
-            return jsonify({"error": "Webhook secret is required in the message body"}), 401
+        # Webhook secret'ı API key olarak kullanacağız
+        api_key = secret
         
-        # Secret key'e sahip kullanıcıyı bul
-        user_creds = UserCredentials.query.filter_by(webhook_secret=webhook_secret).first()
-        if not user_creds:
-            return jsonify({"error": "Invalid webhook secret"}), 401
-        
-        if not user_creds.hash_value:
-            return jsonify({"error": "User has not completed SMS verification"}), 401
-        
-        # API nesnesi oluştur ve hash ile başlat
-        algo = API(
-            api_key=user_creds.api_key,
-            username=user_creds.username,
-            password=user_creds.password,
-            auto_login=False,
-            verbose=True
-        )
-        
-        # Hash değerini ayarla
-        algo.hash = user_creds.hash_value
-        algo.save_settings()
-        
-        # TradingView'dan gelen veriyi Algolab formatına dönüştür
-        symbol = data.get('symbol', '')
-        direction = data.get('side', '').upper()
-        price_type = data.get('type', 'LIMIT').upper()
-        price = str(data.get('price', '0'))
-        lot = str(data.get('quantity', '0'))
-        
-        # Market emirlerinde özel ayarlar
-        if price_type == 'MARKET':
-            price_type = 'piyasa'  # API dokümantasyonunda belirtilen değeri kullan
-            price = ''  # Piyasa emirlerinde fiyat boş olmalı
-        else:
-            price_type = 'limit'  # Limit emirleri için küçük harf
+        if not api_key:
+            return jsonify({'error': 'Invalid secret key'}), 401
+
+        # Session kontrolü ve gerekirse otomatik login
+        session = session_manager.get_session(api_key)
+        if not session:
+            try:
+                # API key ile otomatik login
+                algolab_api = AlgolabAPI(api_key)
+                token_info = algolab_api.get_token()
+                if token_info:
+                    session_manager.create_session(
+                        api_key,
+                        token_info['token'],
+                        token_info['refresh_token']
+                    )
+            except Exception as e:
+                return jsonify({'error': f'Auto-login failed: {str(e)}'}), 401
+
+        # Emir işleme
+        symbol = data.get('symbol')
+        side = data.get('side')
+        order_type = data.get('type')
+        price = data.get('price')
+        quantity = data.get('quantity')
+
+        # Emir gönderme işlemi
+        try:
+            algolab_api = AlgolabAPI(api_key)
+            algolab_api.token = session_manager.get_session(api_key)['token']
             
-        app.logger.info(f"Final order parameters: symbol={symbol}, direction={direction}, price_type={price_type}, price={price}, lot={lot}")
-        
-        # Emri gönder
-        response = algo.SendOrder(
-            symbol=symbol,
-            direction='A' if direction == 'BUY' else 'S',
-            pricetype=price_type,
-            price=price,
-            lot=lot,
-            sms=False,
-            email=False,
-            subAccount=""
-        )
-        
-        return jsonify(response)
-        
+            result = algolab_api.place_order(
+                symbol=symbol,
+                side=side,
+                order_type=order_type,
+                price=price,
+                quantity=quantity
+            )
+            return jsonify(result), 200
+        except Exception as e:
+            return jsonify({'error': f'Order placement failed: {str(e)}'}), 500
+
     except Exception as e:
-        app.logger.error(f"Webhook error: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({'error': str(e)}), 400
 
 @app.route('/daily_transactions')
 @login_required
