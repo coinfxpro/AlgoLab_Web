@@ -235,20 +235,22 @@ class AlgolabAPI:
     def place_order(self, symbol, side, order_type, price, quantity):
         """Place a new order"""
         try:
-            url = f"{self.api_url}/api/Order"
-            headers = self.headers.copy()
-            if self.access_token:
-                headers['Authorization'] = f'Bearer {self.access_token}'
+            url = f"{self.api_url}/api/PlaceOrder"
+            headers = self.get_headers()
 
             data = {
                 "symbol": symbol,
-                "side": side,
-                "type": order_type,
-                "price": price,
-                "quantity": quantity
+                "side": side.upper(),
+                "type": order_type.upper(),
+                "price": float(price) if price else 0,
+                "quantity": float(quantity)
             }
 
+            print(f"Sending order request: {data}")
             response = requests.post(url, headers=headers, json=data)
+            print(f"Response status: {response.status_code}")
+            print(f"Response content: {response.text}")
+            
             response.raise_for_status()
             result = response.json()
 
