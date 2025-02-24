@@ -5,46 +5,51 @@ from algolab_api import AlgolabAPI
 
 class SessionManager:
     def __init__(self):
-        self._sessions = {}  # {user_id: (api_instance, last_refresh_time)}
-        self._lock = threading.Lock()
-        self._refresh_thread = threading.Thread(target=self._refresh_loop, daemon=True)
-        self._running = False
+        self.sessions = {}
+        self.token_refresh_thread = None
+        self.running = True
+        self.start_token_refresh_thread()
     
-    def start(self):
-        self._running = True
-        self._refresh_thread.start()
-    
-    def add_session(self, user_id, api_instance):
-        with self._lock:
-            self._sessions[user_id] = (api_instance, datetime.now())
-    
-    def get_session(self, user_id):
-        with self._lock:
-            if user_id in self._sessions:
-                return self._sessions[user_id][0]
-        return None
-    
-    def _refresh_loop(self):
-        while self._running:
-            try:
-                self._refresh_all_sessions()
-            except Exception as e:
-                print(f"Error in refresh loop: {e}")
-            time.sleep(300)  # 5 dakika bekle
-    
-    def _refresh_all_sessions(self):
-        with self._lock:
-            current_time = datetime.now()
-            for user_id, (api, last_refresh) in list(self._sessions.items()):
-                if current_time - last_refresh > timedelta(minutes=8):
-                    try:
-                        # Token yenileme işlemi
-                        api.refresh_token()
-                        self._sessions[user_id] = (api, current_time)
-                        print(f"Session refreshed for user {user_id}")
-                    except Exception as e:
-                        print(f"Failed to refresh session for user {user_id}: {e}")
-                        # Başarısız olursa session'ı kaldır
-                        self._sessions.pop(user_id, None)
+    def start_token_refresh_thread(self):
+        def refresh_tokens():
+            while self.running:
+                current_time = time.time()
+                for api_key in list(self.sessions.keys()):
+                    session = self.sessions.get(api_key)
+                    if session and current_time - session.get('last_refresh', 0) >= 540:  # 9 minutes
+                        try:
+                            self.refresh_session_token(api_key)
+                        except Exception as e:
+                            print(f"Token refresh error for {api_key}: {str(e)}")
+                time.sleep(60)  # Check every minute
+
+        if not self.token_refresh_thread:
+            self.token_refresh_thread = threading.Thread(target=refresh_tokens, daemon=True)
+            self.token_refresh_thread.start()
+
+    def refresh_session_token(self, api_key):
+        session = self.sessions.get(api_key)
+        if not session:
+            return False
+        
+        try:
+            algolab_api = AlgolabAPI(api_key)
+            new_token = algolab_api.refresh_token(session['refresh_token'])
+            if new_token:
+                session['token'] = new_token
+                session['last_refresh'] = time.time()
+                self.sessions[api_key] = session
+                return True
+        except Exception as e:
+            print(f"Error refreshing token: {str(e)}")
+        return False
+
+    def create_session(self, api_key, token, refresh_token):
+        self.sessions[api_key] = {
+            'token': token,
+            'refresh_token': refresh_token,
+            'last_refresh': time.time()
+        }
+        return True
 
 session_manager = SessionManager()
