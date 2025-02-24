@@ -231,3 +231,30 @@ class AlgolabAPI:
         if self.ws:
             self.ws.close()
             self.connected = False
+
+    def place_order(self, symbol, side, order_type, price, quantity):
+        """Place a new order"""
+        try:
+            url = f"{self.api_url}/api/Order"
+            headers = self.headers.copy()
+            if self.access_token:
+                headers['Authorization'] = f'Bearer {self.access_token}'
+
+            data = {
+                "symbol": symbol,
+                "side": side,
+                "type": order_type,
+                "price": price,
+                "quantity": quantity
+            }
+
+            response = requests.post(url, headers=headers, json=data)
+            response.raise_for_status()
+            result = response.json()
+
+            if result.get('success'):
+                return result
+            else:
+                raise Exception(result.get('message', 'Order placement failed'))
+        except Exception as e:
+            raise Exception(f"Order placement error: {str(e)}")
