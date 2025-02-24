@@ -235,7 +235,7 @@ class AlgolabAPI:
     def place_order(self, symbol, side, order_type, price, quantity):
         """Place a new order"""
         try:
-            url = f"{self.api_url}/api/PlaceOrder"
+            url = f"{self.api_url}/api/SendOrder"
             headers = self.get_headers()
 
             data = {
@@ -247,6 +247,7 @@ class AlgolabAPI:
             }
 
             print(f"Sending order request: {data}")
+            print(f"Using headers: {headers}")
             response = requests.post(url, headers=headers, json=data)
             print(f"Response status: {response.status_code}")
             print(f"Response content: {response.text}")
