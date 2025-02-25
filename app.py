@@ -620,9 +620,6 @@ def webhook_settings():
 
 @app.route('/webhook/tradingview', methods=['POST'])
 def tradingview_webhook():
-    if not request.is_json:
-        return jsonify({"error": "Content-Type must be application/json"}), 400
-    
     try:
         data = request.get_json()
         print(f"Received webhook data: {data}")
@@ -634,50 +631,38 @@ def tradingview_webhook():
         user_creds = UserCredentials.query.filter_by(webhook_secret=webhook_secret).first()
         if not user_creds:
             return jsonify({"error": "Invalid webhook secret"}), 401
+            
+        if not user_creds.hash_value:
+            return jsonify({"error": "Please complete SMS verification first via web interface"}), 401
         
         # Mevcut API instance'ı kontrol et veya yeni oluştur
         with session_lock:
             if webhook_secret in webhook_sessions:
                 algo = webhook_sessions[webhook_secret][0]
-                # Oturumu yenilemeyi dene
                 try:
                     algo.RefreshSession()
                     print("Session refreshed successfully")
                 except Exception as e:
-                    print(f"Session refresh failed: {e}")
-                    # Yeni oturum aç
+                    print(f"Session refresh failed, creating new instance: {e}")
                     algo = API(
                         api_key=user_creds.api_key,
                         username=user_creds.username,
                         password=user_creds.password,
-                        auto_login=False,
-                        verbose=True
+                        auto_login=False
                     )
-                    if user_creds.hash_value:
-                        algo.hash = user_creds.hash_value
-                        algo.save_settings()
+                    algo.hash = user_creds.hash_value
+                    algo.save_settings()
                     webhook_sessions[webhook_secret] = (algo, time.time())
             else:
-                print("Creating new API instance...")
+                print("Creating new API instance with saved hash...")
                 algo = API(
                     api_key=user_creds.api_key,
                     username=user_creds.username,
                     password=user_creds.password,
-                    auto_login=False,
-                    verbose=True
+                    auto_login=False
                 )
-                
-                # Login işlemi
-                print("Attempting login...")
-                if not algo.LoginUser():
-                    raise Exception("Login failed")
-                print("Login successful")
-                
-                if user_creds.hash_value:
-                    algo.hash = user_creds.hash_value
-                    algo.save_settings()
-                    print("Hash value set")
-                
+                algo.hash = user_creds.hash_value
+                algo.save_settings()
                 webhook_sessions[webhook_secret] = (algo, time.time())
         
         print("Preparing to send order...")
