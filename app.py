@@ -731,6 +731,27 @@ def daily_transactions():
         flash(f'Hata: {str(e)}', 'error')
         return redirect(url_for('login'))
 
+@app.route('/health')
+def health_check():
+    try:
+        # API bağlantısını kontrol et
+        if api_instance:
+            # Basit bir API çağrısı yap (örneğin sembol listesi al)
+            api_instance.GetEquityInfo("")
+            return jsonify({
+                "status": "ok",
+                "message": "Service is running and API is connected"
+            })
+        return jsonify({
+            "status": "warning",
+            "message": "Service is running but no API instance"
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
 if __name__ == '__main__':
     # Worker'ı başlatma komutu
     os.system('python worker.py &')
