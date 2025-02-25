@@ -639,7 +639,26 @@ def tradingview_webhook():
         with session_lock:
             if webhook_secret in webhook_sessions:
                 algo = webhook_sessions[webhook_secret][0]
+                # Oturumu yenilemeyi dene
+                try:
+                    algo.RefreshSession()
+                    print("Session refreshed successfully")
+                except Exception as e:
+                    print(f"Session refresh failed: {e}")
+                    # Yeni oturum aç
+                    algo = API(
+                        api_key=user_creds.api_key,
+                        username=user_creds.username,
+                        password=user_creds.password,
+                        auto_login=False,
+                        verbose=True
+                    )
+                    if user_creds.hash_value:
+                        algo.hash = user_creds.hash_value
+                        algo.save_settings()
+                    webhook_sessions[webhook_secret] = (algo, time.time())
             else:
+                print("Creating new API instance...")
                 algo = API(
                     api_key=user_creds.api_key,
                     username=user_creds.username,
@@ -648,13 +667,20 @@ def tradingview_webhook():
                     verbose=True
                 )
                 
+                # Login işlemi
+                print("Attempting login...")
+                if not algo.LoginUser():
+                    raise Exception("Login failed")
+                print("Login successful")
+                
                 if user_creds.hash_value:
                     algo.hash = user_creds.hash_value
                     algo.save_settings()
+                    print("Hash value set")
                 
                 webhook_sessions[webhook_secret] = (algo, time.time())
         
-        # Emir gönderme işlemleri...
+        print("Preparing to send order...")
         symbol = data.get('symbol', '')
         direction = 'A' if data.get('side', '').upper() == 'BUY' else 'S'
         price_type = 'piyasa' if data.get('type', '').upper() == 'MARKET' else 'limit'
@@ -675,11 +701,18 @@ def tradingview_webhook():
         )
         
         print(f"Order response: {response}")
+        
+        if not response.get('success'):
+            if response.get('message') == '401':
+                raise Exception("Authentication failed - please login again")
+            raise Exception(response.get('message', 'Unknown error'))
+            
         return jsonify(response)
         
     except Exception as e:
-        print(f"Webhook error: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        error_msg = str(e)
+        print(f"Webhook error: {error_msg}")
+        return jsonify({"error": error_msg}), 500
 
 @app.route('/daily_transactions')
 @login_required
