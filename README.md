@@ -4,14 +4,16 @@ Algolab.com.tr API'sini kullanarak geliştirilmiş web tabanlı trading platform
 
 ## Özellikler
 
-- Kullanıcı girişi ve SMS doğrulama
-- Canlı borsa verileri ve grafikler
-- Portföy yönetimi
-- Alım/Satım işlemleri
-- Emir takibi
+- Web arayüzü ile kolay kullanım
 - TradingView webhook entegrasyonu
+- Otomatik oturum yönetimi
+- Portföy takibi
+- Günlük işlem geçmişi
+- Webhook emir geçmişi
 
 ## Kurulum
+
+### Localhost Kurulumu
 
 1. Repo'yu klonlayın:
 ```bash
@@ -41,85 +43,123 @@ python
 >>> exit()
 ```
 
-## Kullanım
+### Sunucu Kurulumu (Render.com)
 
-1. Uygulamayı başlatın:
+1. Render.com'da yeni bir Web Service oluşturun
+2. GitHub reponuzu bağlayın
+3. Environment variables'ları ayarlayın:
+   - `SECRET_KEY`: Rastgele bir string
+   - Diğer gerekli environment variables'lar
+
+4. Build Command:
 ```bash
-python app.py
+pip install -r requirements.txt
 ```
 
-2. Tarayıcınızda `http://127.0.0.1:5001` adresine gidin
+5. Start Command:
+```bash
+gunicorn app:app
+```
 
-3. Giriş yapın:
-   - API Anahtarı: Algolab'den aldığınız API anahtarı
-   - Kullanıcı Adı: Denizbank kullanıcı adınız
-   - Şifre: Denizbank şifreniz
+## Kullanım
 
-4. SMS doğrulama kodunu girin
+### İlk Kurulum
 
-## TradingView Webhook Entegrasyonu
+1. Web arayüzüne giriş yapın (`/login`)
+2. Algolab API bilgilerinizi girin:
+   - API Key
+   - Username
+   - Password
+3. SMS doğrulamasını tamamlayın
+4. Webhook secret key oluşturun (`/webhook-settings`)
 
-### Webhook Ayarları
+### TradingView Webhook Ayarları
 
-1. Uygulamada "Webhook Ayarları" sayfasına gidin
-2. Size özel webhook secret key'inizi görüntüleyin veya yenisini oluşturun
-3. Bu secret key'i TradingView alert'lerinizde kullanacaksınız
+1. TradingView stratejinizde webhook URL'sini ayarlayın:
+```
+https://your-app-url.com/webhook/tradingview
+```
 
-### TradingView Alert Formatı
-
-TradingView'de alert oluştururken aşağıdaki JSON formatını kullanın:
-
+2. Webhook mesaj formatı:
 ```json
 {
-    "secret": "your_webhook_secret_key",
-    "symbol": "SASA",
-    "side": "BUY",        // BUY veya SELL
-    "type": "MARKET",     // MARKET veya LIMIT
-    "price": "3.55",      // LIMIT emirler için fiyat
-    "quantity": "1"       // Lot miktarı
+    "secret": "your-webhook-secret",
+    "symbol": "PAPIL",
+    "side": "BUY",  // veya "SELL"
+    "type": "MARKET",  // veya "LIMIT"
+    "price": "0",  // LIMIT emirleri için fiyat
+    "quantity": "1"
 }
 ```
 
 ### Emir Tipleri
 
 1. **Market (Piyasa) Emirleri**
-   ```json
-   {
-       "secret": "your_secret",
-       "symbol": "SASA",
-       "side": "BUY",
-       "type": "MARKET",
-       "quantity": "1"
-   }
-   ```
-   - Market emirlerinde `price` belirtmeyin
-   - Emir anında piyasa fiyatından gerçekleşir
+```json
+{
+    "secret": "your_secret",
+    "symbol": "SASA",
+    "side": "BUY",
+    "type": "MARKET",
+    "quantity": "1"
+}
+```
+- Market emirlerinde `price` belirtmeyin
+- Emir anında piyasa fiyatından gerçekleşir
 
 2. **Limit Emirleri**
-   ```json
-   {
-       "secret": "your_secret",
-       "symbol": "SASA",
-       "side": "BUY",
-       "type": "LIMIT",
-       "price": "3.55",
-       "quantity": "1"
-   }
-   ```
-   - Limit emirlerde mutlaka `price` belirtin
-   - Emir belirtilen fiyattan gerçekleşir
+```json
+{
+    "secret": "your_secret",
+    "symbol": "SASA",
+    "side": "BUY",
+    "type": "LIMIT",
+    "price": "3.55",
+    "quantity": "1"
+}
+```
+- Limit emirlerde mutlaka `price` belirtin
+- Emir belirtilen fiyattan gerçekleşir
 
-### TradingView'de Alert Oluşturma
+### Önemli Notlar
 
-1. TradingView'de bir indikatör veya strateji seçin
-2. "Alerts" sekmesine gidin
-3. "Create Alert" butonuna tıklayın
-4. "Webhook URL" alanına:
-   ```
-   http://your-server:5001/webhook/tradingview
-   ```
-5. "Message" alanına yukarıdaki JSON formatında mesajınızı yazın
-6. "Save" ile alert'i kaydedin
+1. **Oturum Yönetimi**:
+   - İlk login ve SMS doğrulaması gereklidir
+   - Sonraki webhook işlemleri otomatik çalışır
+   - Oturumlar otomatik yenilenir (10 dakikada bir)
+   - Web uygulamasını kapatabilirsiniz, webhook'lar çalışmaya devam eder
+
+2. **Render.com Kullanımı**:
+   - Ücretsiz planda 15 dakika inaktivite sonrası uyku moduna geçer
+   - Uptime Robot ile uyanık tutulabilir
+   - Aylık 750 saat çalışma sınırı vardır
+
+3. **Uptime Robot Kurulumu** (Opsiyonel):
+   - Uptimerobot.com'da hesap oluşturun
+   - Yeni HTTP(s) monitör ekleyin
+   - URL: `https://your-app-url.com/health`
+   - 5 dakika kontrol aralığı ayarlayın
+
+## Güvenlik
+
+1. Webhook secret key'inizi güvende tutun
+2. API bilgilerinizi environment variables olarak saklayın
+3. Güçlü şifreler kullanın
+
+## Sorun Giderme
+
+1. **401 Hatası**:
+   - Yeniden login olun
+   - SMS doğrulaması yapın
+
+2. **Webhook Çalışmıyor**:
+   - Secret key'i kontrol edin
+   - Sunucunun uyanık olduğundan emin olun
+   - Logları kontrol edin
+
+3. **Sunucu Uyku Modu**:
+   - Uptime Robot kullanın
+   - veya Pro plana geçin
 
 ### Test Etme
 
